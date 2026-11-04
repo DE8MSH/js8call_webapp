@@ -29,7 +29,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     details.addEventListener('toggle',()=>{if(details.open)[...menubar.querySelectorAll('details')].filter(e=>e!==details).forEach(e=>e.open=false);});
     menubar.append(details);
   }
-  const version=el('span','app-version','JS8Web LAB 0.6 · RX/TX'),menutop=el('span','app-menu-separator');
+  const version=el('span','app-version','JS8Web LAB 0.7 · RX/TX'),menutop=el('span','app-menu-separator');
   menubar.append(menutop,version);
   document.body.insertBefore(menubar,header);
   const toolbar=el('section','rig-toolbar');
@@ -83,7 +83,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
   let selected='',selectedFreq=0;
   function selectStation(call){
     selected=call;$('selectedStation').textContent='Empfänger: '+(call||'@ALLCALL');
-    if(call){$('targetCall').value=call;const entry=callbook.get(call);selectedFreq=entry?.freq||0;}
+    if(call){$('targetCall').value=call;if($('textRecipient'))$('textRecipient').value=call;const entry=callbook.get(call);selectedFreq=entry?.freq||0;}
     paintCalls();paintMessages();
   }
   function paintCalls(){
@@ -141,9 +141,28 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
       callbook.set(p.call,{call:p.call,when,freq:d.frequency||0,kind:p.kind,command:p.command||'',grid:p.grid||''});
       paintCalls();
     }
-    if(p.kind!=='data'&&p.kind!=='unknown'){messages.push({...d,...p,time:new Date(when).toISOString()});if(messages.length>300)messages.shift();paintMessages();$('rxMessageCount').textContent=messages.length+' Nachrichten';}
+    if(p.kind!=='data'&&p.kind!=='unknown'&&p.kind!=='text'&&p.kind!=='text_fragment'&&!(p.kind==='directed'&&p.command==='MSG')){
+      messages.push({...d,...p,time:new Date(when).toISOString()});
+      if(messages.length>300)messages.shift();paintMessages();$('rxMessageCount').textContent=messages.length+' Nachrichten';
+    }
     $('lastCall').textContent=(p.call||'RX')+' · '+Number(d.frequency||0).toFixed(0)+' Hz';
     $('rxState').textContent='Frame empfangen · '+new Date(when).toISOString().slice(11,19)+' UTC';
+  });
+  window.addEventListener('js8:conversation',e=>{
+    const d=e.detail||{},now=Date.parse(d.time)||Date.now();
+    const from=String(d.from||'').toUpperCase();
+    const to=String(d.to||'').toUpperCase();
+    const display=(d.checksum==='invalid'?'[CRC FEHLER] ':'')+String(d.text||'');
+    messages.push({kind:d.kind==='directed'?'directed':'text',display,call:from,to,
+      time:new Date(now).toISOString(),frequency:Number(d.frequency)||0});
+    if(messages.length>300)messages.shift();
+    if(from&&/^[A-Z0-9/]{3,15}$/.test(from)){
+      const old=callbook.get(from);
+      callbook.set(from,{call:from,when:now,freq:Number(d.frequency)||0,
+        kind:'directed',command:'MSG',grid:old?.grid||''});
+      paintCalls();
+    }
+    paintMessages();$('rxMessageCount').textContent=messages.length+' Nachrichten';
   });
   window.addEventListener('js8:clear',()=>{messages.length=0;paintMessages();$('rxMessageCount').textContent='0 Nachrichten';});
   function tuneStation(){
