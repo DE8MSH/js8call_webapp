@@ -1,14 +1,14 @@
-/* JS8Web v0.9 offline cache. Scope is confined to the GitHub Pages repo.
+/* JS8Web v1.0 offline cache. Scope is confined to the GitHub Pages repo.
  * Core JS8 engine is precached; JSC dictionary is opt-in / cache-on-use.
  * No remote API, no remote storage. GPL-3.0-or-later. */
-const CACHE='js8web-static-v09';
+const CACHE='js8web-static-v10';
 const ROOT=new URL(self.registration.scope);
 const CORE=[
  './','./index.html','./app.css','./desktop-extra.css',
  './ui-layout.js','./app.js','./desktop-extra.js','./offline.js',
  './ft450-cat.js','./protocol.js','./jsc.js','./jsc-tx.js',
  './js8-messages.js','./rx-worker.js','./rx-enhance.js',
- './tx-slots.js','./js8-core.wasm','./manifest.webmanifest'
+ './tx-slots.js','./live-rx.js','./js8-core.wasm','./manifest.webmanifest'
 ];
 self.addEventListener('install',event=>{
  event.waitUntil((async()=>{
