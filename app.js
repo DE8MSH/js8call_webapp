@@ -226,7 +226,7 @@ $('tx').onclick=async()=>{
   const result=await txController.transmit({
     periodMs:m.period*1000,
     utcCorrectionMs:Number($('offset').value||0),
-    leadMs:350,
+    leadMs:Math.max(100,Math.min(1500,Math.round(Number($('pttLead').value)||350))),
     audio:()=>getAudio(),
     createSource:ac=>{
       const samples=audioSamples(frame.tones,m,frame.freq,ac.sampleRate);
