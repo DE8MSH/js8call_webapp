@@ -1,8 +1,19 @@
-# JS8Web LAB 0.5 – GitHub-Pages-Webapp
+# JS8Web LAB 0.6 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
+
+## Neuer Stand 0.6 – JSC-Freitext-TX, Desktop-Fenster und Logbuch
+
+Der neue Browser-Encoder `jsc-tx.js` portiert die JSC-Codeworterzeugung (s=7,c=9) und die 70/72-Bit-Nachrichtenframes aus dem hochgeladenen JS8Call-Quellcode. Er lädt das vorhandene 262144-Einträge-Wörterbuch, komprimiert Zeichenfolgen und erzeugt FIRST-/LAST-Frames. `app.js` steuert diese Frame-Liste über den bestehenden WASM-79-Ton-Modulator und den UTC-Zeitschlitz. Jede Sendeschlange muss bewusst vorbereitet und mit TX-Freigabe gestartet werden. STOP unterbricht die Warteschlange und deaktiviert RTS/DTR soweit vorhanden.
+
+Die Schaltfläche **JSC-Frames vorbereiten** erzeugt Frames aus beliebigem unterstütztem JSC-Text. **Alle Frames senden** gibt die vorbereiteten Frames über den Browser-Audioausgang slotweise aus. Ein korrektes Funk-HF-Signal setzt eine geeignete Soundkartenschnittstelle und PTT voraus; WebSerial-PTT ist weiterhin nur RTS/DTR. Der Textencoder umfasst **nicht** den vollständigen JS8Call-Directed-Nachrichtenparser, automatische Relays, empfangsbasierte Wiederholungen oder CAT.
+
+Die Oberfläche erhält einen freigestalteten Chat-Composer und aus dem Menü **Fenster** aufrufbare, verschiebbare und skalierbare **Inbox**, **Outbox** und **Logbuch**. Empfangsereignisse und Ausgabeprotokolle werden nur lokal im Browser in `localStorage` gespeichert, nicht an einen Server gesendet. Logbucheinträge können als ADIF exportiert werden. Das sind **lokale Browser-Fenster**, nicht das originale JS8Call-Store-and-Forward-Postfach.
+
+Mit `node tests/jsc-tx.mjs` wird die neue TX-Kodierung gegen die vorhandene JSC-Dekodierung und das Wörterbuch rückgeprüft. Weiterhin **kein 100-prozentiger Port** des Originals (fehlende CAT/Hamlib-Kompatibilität, vollständiger Softdecoder, Relays/Inbox-Protokoll, Nachrichtensemantik und Hardware-Live-Tests).
+
 
 ## Funktionsumfang / geprüfte Tests
 
@@ -19,9 +30,11 @@ Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solch
 | Wasserfall und WAV-Import/Export | Implementiert |
 | CSV-Logging | Implementiert |
 | PTT über serielle RTS/DTR-Leitung | Browserseitig implementiert, Hardwaretest offen |
-| JS8Call-Protokoll: CQ, HB, gerichtete Kurzbefehle (Einzelrahmen) | **Teilport**; Sender und Parser ergänzt |\n| Alte Huffman-Textframes und Heartbeat-SNR | Implementiert, Tests mit echten RX-Frames |
+| JS8Call-Protokoll: CQ, HB, gerichtete Kurzbefehle (Einzelrahmen) | **Teilport**; Sender und Parser ergänzt |
+| JSC-Freitext-TX und FIRST/LAST-Frameketten | **Ja**, mit JSC-Dictionary; integrierter HF-Livetest offen |\n| Alte Huffman-Textframes und Heartbeat-SNR | Implementiert, Tests mit echten RX-Frames |
 | Vollständige JSC-Wortbuch-Dekompression (262144 Wörter) | **Ja: RX-Teilport**, alle Wörter in acht statischen JSON-Dateien; On-air-Frame-Tests |
-| Vollständige JS8Call-Nachrichtenverwaltung, Inbox und Store-and-forward | **Nein** |
+| Browser-Inbox/Outbox, lokale Datenspeicherung und ADIF-Logbuch | **Ja**, lokal in Browserdaten |
+| Original-JS8Call-Inbox, Nachrichtentransfer, Routing/Store-and-forward | **Nein** |
 | Vollständiger Softdecoder mit zeit-/frequenzbreitem Suchraster wie im Original | **Nein** |
 | Hamlib/CAT-Transceiversteuerung, USB-PTT für alle Geräte | **Nein** |
 | Browser-Unterstützung ohne WebSerial | RX/TX-Audio möglich; keine serielle PTT |
