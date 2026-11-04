@@ -63,7 +63,7 @@ function row(result,origin,meta={}){
  let frames=[...(result.results?.length?result.results:[result])].sort((a,b)=>(a.start||0)-(b.start||0)),added=0;
  for(const f of frames){
   const ms=meta.startMs==null?Date.now():meta.startMs+(f.start||0)/12000*1000;
-  const key=Math.round(ms/2000)+'|'+Math.round(f.frequency/8)+'|'+f.text;
+  const key=(meta.mode||$('mode').value)+'|'+Math.round(ms/2000)+'|'+Math.round(f.frequency/8)+'|'+f.text;
   if(seenFrames.has(key))continue;
   seenFrames.add(key);if(seenFrames.size>500){seenFrames.delete(seenFrames.values().next().value);}
   let parsed;try{parsed=parseFrame(f.text,f.type);}catch{parsed={display:'Unbekannt',kind:'unknown'};}
@@ -274,7 +274,15 @@ $('start').onclick=async()=>{
   renderTimer=setInterval(spectrogram,95);$('start').disabled=true;$('stop').disabled=false;
   status('RX aktiv · '+ctx.sampleRate+' Hz · '+activeModes.map(x=>x.toUpperCase()).join('/')+' · '+(activeModes.length===4?'2 Decoder-Worker · begrenzter Rückstau · ':'')+($('scanAuto').checked?'300–3000 Hz (hohe CPU-Last)':'±30 Hz um Audiofrequenz'));
   if(activeModes.length===4&&$('scanAuto').checked)status('Hinweis: AUTO4 mit 300–3000 Hz braucht hohe CPU-Leistung; bei Verwerfungen schmalbandig scannen.');
- }catch(e){status('Mikrofon-Start: '+e.message);stream?.getTracks().forEach(t=>t.stop());}
+ }catch(e){
+  rxOn=false;liveQueue.reset();stopLiveWorkers();captureStartMs=0;pcmBlocks=[];
+  if(processor)processor.onaudioprocess=null;
+  try{processor?.disconnect();source?.disconnect();zero?.disconnect();}catch{}
+  stream?.getTracks().forEach(t=>t.stop());
+  $('mode').disabled=false;$('offset').disabled=false;$('rxDevice').disabled=false;$('liveAllModes').disabled=false;
+  $('start').disabled=false;$('stop').disabled=true;
+  status('Mikrofon-Start: '+e.message);
+ }
 };
 $('stop').onclick=()=>{
  rxOn=false;if(processor)processor.onaudioprocess=null;processor?.disconnect();source?.disconnect();zero?.disconnect();stream?.getTracks().forEach(t=>t.stop());
@@ -282,7 +290,7 @@ $('stop').onclick=()=>{
  rxGeneration++;liveQueue.reset();stopLiveWorkers();livePlanner.reset(0,[]);
  textAssembler.reset();conversationTracker.reset();
  $('mode').disabled=false;$('offset').disabled=false;$('rxDevice').disabled=false;$('liveAllModes').disabled=false;
- $('start').disabled=false;$('stop').disabled=true;liveStatus();status('RX gestoppt · Decoder-Worker freigegeben');
+ $('start').disabled=false;$('stop').disabled=true;worker?.postMessage({reset:true});liveStatus();status('RX gestoppt · Decoder-Worker freigegeben');
 };
 $('spectrum').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect(),x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));$('audioFreq').value=Math.round(300+2700*x);status('Manuelle Audiofrequenz: '+freq()+' Hz');});
 $('call').addEventListener('input',()=>{$('protocolCall').value=$('call').value.toUpperCase();});
