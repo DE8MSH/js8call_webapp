@@ -22,6 +22,7 @@ $('downloadTest').onclick=()=>{try{const p=make();download(wavBytes(audioSamples
 function rxDecode(payload){return new Promise(resolve=>{const id=++seq;pending.set(id,resolve);worker.postMessage({id,...payload},payload.samples?[payload.samples.buffer]:[]);});}
 const seenFrames=new Set();
 const textAssembler=new MessageAssembler();
+let jscSequence=Promise.resolve(),rxGeneration=0;
 const conversationTracker=new MessageSessionTracker();
 window.addEventListener('js8:frame',event=>{
   const message=conversationTracker.accept(event.detail);
@@ -29,7 +30,7 @@ window.addEventListener('js8:frame',event=>{
 });
 function row(result,origin,meta={}){
  if(!result.ok){status(origin+': '+result.reason+(Number.isFinite(result.q)?' · Sync '+result.q.toFixed(2):'')+(Number.isFinite(result.scanPeak)?' · stärkster Kandidat '+result.scanPeak.toFixed(0)+' Hz':''));return;}
- let frames=result.results?.length?result.results:[result],added=0;
+ let frames=[...(result.results?.length?result.results:[result])].sort((a,b)=>(a.start||0)-(b.start||0)),added=0;
  for(const f of frames){
   const ms=meta.startMs==null?Date.now():meta.startMs+(f.start||0)/12000*1000;
   const key=Math.round(ms/2000)+'|'+Math.round(f.frequency/8)+'|'+f.text;
@@ -48,7 +49,9 @@ function row(result,origin,meta={}){
   // Complete JS8Call JSC (s=7,c=9) dictionary decompression is lazy.
   // A CRC-valid data frame remains recorded even if the dictionary cannot load.
   if(parsed.kind==='data'||(f.type&4)){
-    decodeJscFrame(f.text,f.type).then(decoded=>{
+    const generation=rxGeneration;
+    jscSequence=jscSequence.catch(()=>{}).then(()=>decodeJscFrame(f.text,f.type)).then(decoded=>{
+      if(generation!==rxGeneration)return;
       if(!decoded?.display)return;
       const assembled=textAssembler.add({frame:f.text,text:decoded.display,mode:item.mode,
         frequency:item.frequency,type:f.type,time:item.time,period:MODES[item.mode]?.period||15});
@@ -66,7 +69,7 @@ function row(result,origin,meta={}){
  }
  if(added)$('framecount').textContent=logs.length+' Frames';
 }
-$('clear').onclick=()=>{seenFrames.clear();logs=[];window.dispatchEvent(new Event('js8:clear'));$('log').replaceChildren();$('framecount').textContent='0 Frames';};
+$('clear').onclick=()=>{rxGeneration++;textAssembler.reset();conversationTracker.reset();seenFrames.clear();logs=[];window.dispatchEvent(new Event('js8:clear'));$('log').replaceChildren();$('framecount').textContent='0 Frames';};
 $('csv').onclick=()=>{const rows=[['UTC','Mode','Type','Decoded','RawFrame','AudioHz','Sync','Decoder','Quelle'],...logs.map(x=>[x.time,x.mode,x.type,x.display,x.text,x.frequency,x.sync,x.strategy,x.origin])];let csv=rows.map(x=>x.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\r\n');download(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}),'js8web-rx-log.csv');};
 $('synthetic').onclick=async()=>{try{if(!worker)throw Error('Worker nicht bereit');const p=make();status('Eigenen JS8-Frame über simulierten 12-kHz-Funkkanal decodieren …');const r=await rxDecode({synthetic:true,tones:p.tones,freq:p.freq,mode:p.mode});row(r,'Selbsttest');}catch(e){status('Selbsttest: '+e.message)}};
 
