@@ -1,6 +1,6 @@
 # JS8Web 1.1 — Abgleich mit den originalen Qt-UI-Dateien
 
-**Quelle:** Anwender-Upload \`JS8Call-improved-master.zip\`. Die Struktur und
+**Quelle:** Anwender-Upload \`JS8Call-improved-master.zip\`. Die originale QSplitter-Struktur und
 Bezeichnungen wurden direkt aus diesen Dateien entnommen:
 
 - \`JS8_UI/mainwindow.ui\`
