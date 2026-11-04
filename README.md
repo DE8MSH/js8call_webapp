@@ -1,8 +1,19 @@
-# JS8Web LAB 0.6 – GitHub-Pages-Webapp
+# JS8Web LAB 0.7 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
+
+## Stand 0.7 – JS8Call MSG-Frames, CRC16 und echte TX-Ausgangswahl
+
+**Gerichtete Nachricht:** Im TX-Nachrichteneditor den Modus **Gerichtete MSG · JS8Call + CRC16** wählen, eine Station auswählen und einen Text eingeben. Die Webapp baut einen originalen JS8Call-Directed-Header (`MSG`, Command 9) sowie JSC-kodierte Folgerahmen, hängt die CRC16-KERMIT-Prüfsumme im JS8Call-Base41-Format an und setzt FIRST auf den Directed-Header und LAST auf den letzten Datenframe. Freitext an `@ALLCALL` bleibt im Modus **Freitext · JSC** möglich; automatische Store-and-forward-Routen sind nicht implementiert.
+
+**Empfang:** Die Zusammenführung erkennt nun Nachrichtenketten, bei denen das FIRST-Bit auf dem Directed-Header statt auf einem Datenframe liegt. `MessageSessionTracker` ordnet einen decodierten MSG-Header der nächsten vollständig decodierten Textkette auf der gleichen Audiofrequenz und im gleichen Modus zu (Zeitlimit 10 Minuten). Das Empfangsfenster kennzeichnet ungültige CRC16-Nachrichten als **[CRC FEHLER]**; solche Nachrichten gelten ausdrücklich nicht als bestätigt. Fehlende Frames, Funkinterferenzen und schwache Signale können weiterhin zum Abbruch oder zu Zuordnungsfehlern führen. **Dies ist keine vollständige JS8Call-Routing-/Inbox-Implementierung.**
+
+**TX-Soundkarte:** Zusätzlich zum RX-Eingang gibt es ein Dropdown für den TX-Audioausgang. Chromium-Browser mit `AudioContext.setSinkId` können auf die ausgewählte Soundkarte ausgeben. Wenn die Methode fehlt, zeigt die Anwendung bei der Auswahl eines separaten TX-Ausgangs einen Fehler, anstatt unbemerkt auf die falsche Soundkarte zu senden. WebSerial RTS/DTR bleibt optional; Hamlib/CAT fehlt.
+
+**Tests:** `tests/message-flow.mjs` prüft den CRC16-KERMIT-Referenzvektor `123456789 -> 0x2189 -> 54G`, Directed-MSG-Header/Parser, JSC-TX/RX-Roundtrips für vier Submodes, verkettete MSG-Datenframes und erkannte CRC-Fehler. Der automatisierte Build prüft diesen Test zusätzlich zu den bisherigen Modemtests. Ergebnisse des Build-Tests sind kein Ersatz für einen echten HF-Test.
+
 
 ## Neuer Stand 0.6 – JSC-Freitext-TX, Desktop-Fenster und Logbuch
 
