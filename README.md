@@ -1,8 +1,22 @@
-# JS8Web LAB 1.0 – GitHub-Pages-Webapp
+# JS8Web LAB 1.1 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
+
+## Stand 1.1 — Originale JS8Call-Oberflächenstruktur aus den Qt-Quelldateien
+
+Die drei Original-Designerdateien `JS8_UI/mainwindow.ui`, `MessagePanel.ui` und `WideGraph.ui` (sowie `Configuration.ui`) aus dem bereitgestellten JS8Call-improved-Archiv dienen als konkrete Vorlage. Die Webapp übernimmt die **Makro- und Steuerleisten**, die **drei Spalten mit verschiebbaren Trennleisten**, die **Stationsdetails**, die **Band-Activity-Spaltenüberschriften**, die originalgetreue **gelbe RX-Textfläche** und **Wasserfall-Bedienelemente**. Die Umsetzung befindet sich in `original-ui.js` und `original-ui.css`; bestehende JS8-Datenströme und DOM-IDs werden weiterverwendet.
+
+- **Macros**: Directed, SNR, HB, Saved, INFO, CQ, Deselect, REPLY, Halt und STATUS in der Reihenfolge der Qt-Datei. Gültige Kurzbefehle und Beacons werden wie bisher **nur vorbereitet**, niemals unaufgefordert gesendet.
+- **Saved**: Dialog für eigene, browserlokal gespeicherte Textbausteine mit `{CALL}`, `{TO}` und `{GRID}`. Einfügen in den Nachrichteneditor, keine automatische Übertragung.
+- **Controls**: MODE, RX, TX/Manuelle Freigabe, LOG QSO und CAT mit echter Anbindung. AUTO, HB AUTO, HB ACK, SPOT und TUNE sind sichtbar, aber bewusst deaktiviert, weil die Originalfunktionen nicht implementiert sind.
+- **WideGraph-Regler**: Palette, Gain, Zero und Average verändern die tatsächliche Spektrums-/Wasserfall-Anzeige; der Offset kann in 25-Hz-Schritten verändert werden. Der Time-Drift-Knopf öffnet die UTC-Einstellung.
+- **Fenster / Menü**: verschiebbare Trenner mit Tastatursteuerung, gespeicherte Spaltengrößen, Vollbild-Aktion und Fokus-Menübefehle. Unter 950 px werden die Hauptspalten untereinander angezeigt.
+
+Eine genaue Zuordnung von Qt-`objectName` zu Browser-Komponente und Funktionsumfang steht in [`docs/qt-ui-parity.md`](docs/qt-ui-parity.md). Die Offline-Cache-Version `v11` speichert diese neuen UI-Dateien mit. `tests/qt-ui.mjs` ist als Regressionstest im GitHub-Pages-Build eingebunden.
+
+**Weiterhin kein 100%-Port:** Der Desktop-Qt-Aufbau wurde anhand der Originalquellen angenähert, die darunterliegende originale WSJT-X-Engine, automatische Nachrichtenwege, Hamlib-Netzwerkfunktionen und echte Betriebsautomatik sind noch nicht übernommen. Ein Buildtest ersetzt keine vollständige Sichtprüfung im Browser.
 
 ## Stand 1.0 – Live-AUTO4 mit vier UTC-Zeitschlitzen
 
