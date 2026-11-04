@@ -1,0 +1,62 @@
+name: Build and deploy JS8Web LAB
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'js8-core.wasm'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: js8web-pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install WebAssembly compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld
+
+      - name: Compile js8-core.wasm
+        run: bash ./BAUEN.sh
+
+      - name: Validate browser source
+        run: |
+          node --check app.js
+          node --check rx-worker.js
+          node tests/test.mjs
+
+      - name: Publish precompiled WASM on main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js8-core.wasm
+          if ! git diff --cached --quiet; then
+            git commit -m "Build JS8 WebAssembly binary [skip ci]"
+            git push
+          fi
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
