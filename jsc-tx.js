@@ -4,6 +4,7 @@
 const ALPHABET='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-+';
 let dictionaryPromise;
 const MAX_FRAMES=64;
+const indexedDictionaries=new WeakMap();
 async function loadDictionary(){
   if(!dictionaryPromise)dictionaryPromise=Promise.all(Array.from({length:8},async(_,i)=>{
     const response=await fetch(new URL(`./jsc-dict/chunk${i}.json`,import.meta.url));
@@ -15,6 +16,7 @@ async function loadDictionary(){
   return dictionaryPromise;
 }
 function indexDictionary(dict){
+  if(indexedDictionaries.has(dict))return indexedDictionaries.get(dict);
   const byFirst=new Map();
   dict.forEach((word,index)=>{
     if(!word)return;
@@ -23,6 +25,7 @@ function indexDictionary(dict){
     byFirst.get(lead).push({word,index});
   });
   for(const arr of byFirst.values())arr.sort((a,b)=>b.word.length-a.word.length||a.index-b.index);
+  indexedDictionaries.set(dict,byFirst);
   return byFirst;
 }
 function codeword(index,space){
