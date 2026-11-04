@@ -95,4 +95,34 @@ assert.throws(()=>nextUtcSlot(1000,0));
  await assert.rejects(pending,{name:'AbortError'});await cancelled;
  assert.equal(trace.at(-1)[1],false);
 }
+{
+ const c=clock(),trace=[],s=source(trace);
+ const tx=new SlotTransmitter({now:c.now,schedule:c.schedule,unschedule:c.unschedule,
+  ptt:async on=>{trace.push(['ptt',on]);if(!on)throw Error('USB I/O fehlgeschlagen');}
+ });
+ const pending=tx.transmit({periodMs:15000,audio:async()=>({currentTime:0}),createSource:async()=>s});
+ await flush();c.advance(14650);await flush();s.finish();
+ await assert.rejects(pending,/PTT konnte nicht deaktiviert/);
+ assert.equal(tx.busy,false);
+ assert.equal(trace.some(e=>e[0]==='audio-start'),true);
+}
+{
+ const c=clock(),trace=[],s=source(trace);
+ let confirmPtt;
+ const tx=new SlotTransmitter({now:c.now,schedule:c.schedule,unschedule:c.unschedule,
+  ptt:on=>{
+   trace.push(['ptt',on]);
+   if(on)return new Promise(resolve=>{confirmPtt=resolve;});
+   return Promise.resolve();
+  }
+ });
+ const pending=tx.transmit({periodMs:15000,audio:async()=>({currentTime:0}),createSource:async()=>s});
+ await flush();c.advance(14650);await flush();
+ assert.equal(typeof confirmPtt,'function');
+ const cancelling=tx.cancel();
+ confirmPtt();await cancelling;
+ await assert.rejects(pending,{name:'AbortError'});
+ assert.equal(trace.some(x=>x[0]==='audio-start'),false,'PTT unlock after cancel must not start audio');
+ assert.equal(trace.at(-1)[1],false);
+}
 console.log('SlotTransmitter tests: UTC, serial PTT failure, cancellation, missed slot, audio-ended PTT release PASS');
