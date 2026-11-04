@@ -40,10 +40,13 @@ jobs:
           node --check rx-worker.js
           node --check protocol.js
           node --check jsc.js
+          node --check jsc-tx.js
+          node --check desktop-extra.js
           node tests/test.mjs
           node tests/rx-scan.mjs
           node tests/protocol-rx.mjs
           node tests/jsc.mjs
+          node tests/jsc-tx.mjs
 
       - name: Save precompiled WASM as downloadable build artifact
         uses: actions/upload-artifact@v4
