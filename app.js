@@ -325,7 +325,7 @@ $('stop').onclick=()=>{
  $('mode').disabled=false;$('offset').disabled=false;$('rxDevice').disabled=false;$('liveAllModes').disabled=false;
  $('start').disabled=false;$('stop').disabled=true;worker?.postMessage({reset:true});liveStatus();status('RX gestoppt · Decoder-Worker freigegeben');
 };
-$('spectrum').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect(),x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));$('audioFreq').value=Math.round(300+2700*x);status('Manuelle Audiofrequenz: '+freq()+' Hz');});
+$('spectrum').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect(),x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));$('audioFreq').value=Math.round(300+2700*x);$('audioFreq').dispatchEvent(new Event('input',{bubbles:true}));$('audioFreq').dispatchEvent(new Event('change',{bubbles:true}));status('Manuelle Audiofrequenz: '+freq()+' Hz');});
 $('call').addEventListener('input',()=>{$('protocolCall').value=$('call').value.toUpperCase();});
 function protocolPrepare(packet){
  $('message').value=packet.frame;$('type').value=String(packet.type);prepared=null;$('tx').disabled=true;prepare();
