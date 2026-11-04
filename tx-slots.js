@@ -74,10 +74,12 @@ export class SlotTransmitter {
       if(token.timer!==null)this.unschedule(token.timer);
       token.rejectDelay=null;token.rejectEnd=null;
       // This also runs when getAudio / setSignals / AudioBufferSource throws.
+      let releaseError=null;
       try{await this.setPtt(false);}
-      catch(e){this.status({state:'ptt-release-error',error:e.message});}
+      catch(e){releaseError=e;this.status({state:'ptt-release-error',error:e.message});}
       if(this.active===token)this.active=null;
       this.status({state:'idle'});
+      if(releaseError)throw Error('PTT konnte nicht deaktiviert werden: '+releaseError.message);
     }
   }
   async cancel(){
