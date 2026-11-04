@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createMessagePlan,crc16Kermit,packChecksum16,verifyChecksum16,
   MessageSessionTracker,prepareMessageText} from '../js8-messages.js';
-import {decodeJscFrame} from '../jsc.js';
+import {decodeJscFrame,MessageAssembler} from '../jsc.js';
 import {parseFrame} from '../protocol.js';
 
 const dictionary=Array.from({length:8},(_,i)=>JSON.parse(
@@ -45,6 +45,17 @@ for(const mode of ['normal','fast','turbo','slow']){
   checked++;
 }
 const plain=createMessagePlan({from:'DO7OO',to:'@ALLCALL',text:'CQ CQ CQ',mode:'normal',kind:'plain'},dictionary);
+assert.equal(plain.frames[0].type&1,1);
+// MSG header carries FIRST: following compressed fragments need to be
+// concatenated even if no data frame has the FIRST bit.
+const assembly=new MessageAssembler();
+const base={mode:'normal',frequency:1500,period:15};
+assert.equal(assembly.add({...base,time:'2026-11-04T12:00:15Z',frame:'F1',type:0,text:'HELLO '}).complete,false);
+assert.equal(assembly.add({...base,time:'2026-11-04T12:00:30Z',frame:'F2',type:0,text:'FROM '}).complete,false);
+const joined=assembly.add({...base,time:'2026-11-04T12:00:45Z',frame:'F3',type:2,text:'DO7OO'});
+assert.equal(joined.display,'HELLO FROM DO7OO');
+assert.equal(joined.complete,true);
+assert.equal(joined.frames,3);
 assert.equal(plain.frames[0].type&1,1);
 assert.equal(plain.frames.at(-1).type&2,2);
 assert.equal((await Promise.all(plain.frames.map(x=>decodeJscFrame(x.frame,x.type,word)))).map(x=>x.display).join(''),plain.wireText);
