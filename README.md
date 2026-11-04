@@ -1,4 +1,4 @@
-# JS8Web LAB 0.3 – GitHub-Pages-Webapp
+# JS8Web LAB 0.4 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
@@ -19,14 +19,22 @@ Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solch
 | Wasserfall und WAV-Import/Export | Implementiert |
 | CSV-Logging | Implementiert |
 | PTT über serielle RTS/DTR-Leitung | Browserseitig implementiert, Hardwaretest offen |
-| JS8Call-Protokoll: CQ, HB, gerichtete Kurzbefehle (Einzelrahmen) | **Teilport**; Sender und Parser ergänzt |\n| Vollständiges JS8Call-Textprotokoll, Inbox und Store-and-forward | **Nein** |
+| JS8Call-Protokoll: CQ, HB, gerichtete Kurzbefehle (Einzelrahmen) | **Teilport**; Sender und Parser ergänzt |\n| Alte Huffman-Textframes und Heartbeat-SNR | Implementiert, Tests mit echten RX-Frames |
+| Vollständiges JS8Call-Textprotokoll (JSC), Inbox und Store-and-forward | **Nein** |
 | Vollständiger Softdecoder mit zeit-/frequenzbreitem Suchraster wie im Original | **Nein** |
 | Hamlib/CAT-Transceiversteuerung, USB-PTT für alle Geräte | **Nein** |
 | Browser-Unterstützung ohne WebSerial | RX/TX-Audio möglich; keine serielle PTT |
 
 **Wichtiger Hinweis:** Ein korrekt erzeugter JS8-Transportframe ist noch **keine reguläre JS8Call-Freitextnachricht**. Das Original verwendet zusätzlich `varicode.cpp` für Kompression, Rufzeichen, Frame-Arten, Directed-Commands, Checksummen und Verkettung. Auf Sendung mit dieser Lab-Version würde ein normaler JS8Call-Client den Dateninhalt üblicherweise nicht als lesbare QSO-Nachricht darstellen. Bitte nur in einer geeigneten Testumgebung oder ausdrücklich als Labortest benutzen.
 
-Der Empfänger sucht standardmäßig **300–3000 Hz** nach Costas-Synchronisationen, verfeinert Zeit und Tonfrequenz und versucht bis zu acht CRC12/LDPC-gültige JS8-Frames pro Suchfenster. Alternativ kann ein enger Bereich um die ausgewählte Audiofrequenz benutzt werden. Die Webapp erkennt CQ/HB und eine begrenzte Menge gerichteter Kurzbefehle. Dies ist **kein vollwertiger schwachsignaltauglicher JS8Call-Decoder**; realer HF-Empfang wurde nicht verifiziert.
+Der Empfänger sucht standardmäßig **300–3000 Hz** nach Costas-Synchronisationen, verfeinert Zeit und Tonfrequenz und versucht bis zu 14 CRC12/LDPC-gültige JS8-Frames pro Suchfenster. Alternativ kann ein enger Bereich um die ausgewählte Audiofrequenz benutzt werden. Die Webapp erkennt CQ/HB und eine begrenzte Menge gerichteter Kurzbefehle. Dies ist **kein vollwertiger schwachsignaltauglicher JS8Call-Decoder**; der reale Empfang wurde durch einen JS8Web-RX-Log vom 4.11.2026 mit HB-/ACK-/SNR-Frames mehrerer Funkstationen bestätigt; schwache-Signal-Leistung und Robustheit sind aber noch nicht mit dem Original verglichen.
+
+
+## Bedienoberfläche und RX-Port in v0.4
+
+Die neue Menüleiste enthält **Datei, Konfiguration, Modus, Log, Ansicht, Steuerung, Hilfe**. Die Anordnung folgt der originalen JS8Call-Arbeitsweise: **Band Activity links, empfangene Nachrichten und TX-Eingabe in der Mitte, Call Activity rechts, Wasserfall unten**. Rufzeichen und Alter stammen aus tatsächlich decodierten Frames. Ein Klick wählt das Zielrufzeichen; Doppelklick stimmt die Audiofrequenz ab. Die Auswahlmenüs öffnen Einstellungen und rufen echte RX-/CQ-/WAV-/Log-/Halt-Funktionen auf. Stations-Einstellungen werden lokal gespeichert; TX-Freigaben ausdrücklich nicht.
+
+Der Protokoll-Decoder unterstützt jetzt **HEARTBEAT SNR / CMD 29 mit dB-Anzeige**, ACK und weitere Kurzbefehle sowie das ältere Huffman-Textformat. Die neuere **JSC-Wortbuchkompression**, vollständige Textverkettung, Inbox und automatisches Nachrichtenrouting sind weiterhin nicht portiert. `tests/protocol-rx.mjs` enthält Rohframe-Regressionen aus dem eingereichten JS8Web-Log mit Stationen wie MM0ZFG, G5TAR, 2E0RLZ, PA3ATX und M6MHG.
 
 ## GitHub Pages – automatische Bereitstellung
 
@@ -68,7 +76,7 @@ Wenn `emcc` vorhanden ist, nutzt `BAUEN.sh` Emscripten. Andernfalls wird ein fre
 ### Architektur
 
 ```text
-index.html + app.css
+index.html + app.css + ui-layout.js
     app.js ── WebAudio (Mikrofon, FFT-Wasserfall, TX-Audio)
        │   ├─ WebSerial (optional PTT RTS/DTR)
        │   └─ WASM-Encoder (js8-core.wasm)
