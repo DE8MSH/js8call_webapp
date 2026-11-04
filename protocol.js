@@ -13,7 +13,7 @@ export const DIRECT_COMMANDS=Object.freeze({
   'STATUS?':6,'INFO?':16,'HW CPY?':19,'QSL?':22,'QSL':23,
   'ACK':14,'FB':18,'SK':20,'RR':21,'NO':26,'YES':27,'73':28,'AGN?':30
 });
-const CMD_LABELS=Object.freeze({0:'SNR?',1:'DIT DIT',2:'NACK',3:'HEARING?',4:'GRID?',6:'STATUS?',14:'ACK',16:'INFO?',18:'FB',19:'HW CPY?',20:'SK',21:'RR',22:'QSL?',23:'QSL',26:'NO',27:'YES',28:'73',30:'AGN?'});
+const CMD_LABELS=Object.freeze({0:'SNR?',1:'DIT DIT',2:'NACK',3:'HEARING?',4:'GRID?',6:'STATUS?',14:'ACK',16:'INFO?',18:'FB',19:'HW CPY?',20:'SK',21:'RR',22:'QSL?',23:'QSL',26:'NO',27:'YES',28:'73',30:'AGN?',25:'SNR',29:'HEARTBEAT SNR',5:'RELAY',7:'STATUS',8:'HEARING',9:'MSG',10:'MSG TO:',11:'QUERY',12:'QUERY MSGS',13:'QUERY CALL',15:'GRID',17:'INFO',24:'CMD',27:'YES'});
 export const CQ_TYPES=['CQ CQ CQ','CQ DX','CQ QRP','CQ CONTEST','CQ FIELD','CQ FD','CQ CQ','CQ'];
 const BASECALLS=['<....>','@ALLCALL','@JS8NET','@DX/NA','@DX/SA','@DX/EU','@DX/AS','@DX/AF','@DX/OC','@DX/AN','@REGION/1','@REGION/2','@REGION/3',...Array.from({length:10},(_,i)=>'@GROUP/'+i),'@COMMAND','@CONTROL','@NET','@NTS',...Array.from({length:5},(_,i)=>'@RESERVE/'+i),'@APRSIS','@RAGCHEW','@JS8','@EMCOMM','@ARES','@MARS','@AMRRON','@RACES','@RAYNET','@RADAR','@SKYWARN','@CQ','@HB','@QSO','@QSOPARTY','@CONTEST','@FIELDDAY','@SOTA','@IOTA','@POTA','@QRP','@QRO'];
 const NBASECALL=37*36*10*27*27*27;
@@ -128,7 +128,35 @@ export function parseFrame(frame){
     const from=unpackCallsign(Number((first64>>33n)&MASK28),!!(rem&128)),to=unpackCallsign(Number((first64>>5n)&MASK28),!!(rem&64));
     const command=CMD_LABELS[Number(first64&31n)]??'CMD '+Number(first64&31n);
     const value=rem&63;
-    return{kind:'directed',call:from,to,command,number:value,display:from+': '+to+' '+command+(value?' ['+value+']':'')};
+    const snrCommand=(command==='SNR'||command==='HEARTBEAT SNR');
+    const numeric=value?(snrCommand?' '+(value-31>=0?'+':'')+(value-31)+' dB':' '+String(value-31)):'';
+    return{kind:'directed',call:from,to,command,number:value,snr:snrCommand&&value?value-31:null,display:from+': '+to+' '+command+numeric};
   }
-  return{kind:'data',command:'DATA',display:'Datenframe (Protokoll noch nicht portiert)'};
+  const compressed=(flag===6||flag===7),legacy=flag>=4;
+  if(legacy){
+    const bits=v.toString(2).padStart(72,'0');
+    // Original JS8Call 2.2: bit0=data, bit1=0 for legacy Huffman; last 0 is the end marker.
+    if(bits[0]==='1'&&bits[1]==='0'){
+      const end=bits.lastIndexOf('0'),decoded=huffmanDecode(bits.slice(2,end));
+      if(decoded)return{kind:'text',command:'TEXT',display:decoded};
+    }
+    return{kind:'data',command:'DATA',display:compressed?'Komprimierter JS8-Text (JSC-Wörterbuch nicht enthalten)':'JS8-Datenframe (noch nicht dekomprimiert)'};
+  }
+  return{kind:'unknown',command:'UNKNOWN',display:'Unbekannter Datenframe'};
+}
+
+/* Original JS8Call legacy Huffman dictionary; current 2.2+ sends normally JSC frames. */
+const HUFFMAN=Object.freeze({
+' ':'01',E:'100',T:'1101',A:'0011',O:'11111',I:'11100',N:'10111',S:'10100',
+H:'00011',R:'00000',D:'111011',L:'110011',C:'110001',U:'101101',M:'101011',W:'001011',
+F:'001001',G:'000101',Y:'000011',P:'1111011',B:'1111001','.':'1110100',V:'1100101',
+K:'1100100','-':'1100001','+':'1100000','?':'1011001','!':'1011000','"':'1010101',
+X:'1010100','0':'0010101',J:'0010100','1':'0010001',Q:'0010000','2':'0001001',
+Z:'0001000','3':'0000101','5':'0000100','4':'11110101','9':'11110100',
+'8':'11110001','6':'11110000','7':'11101011','/':'11101010'
+});
+const HUFF_TREE=(()=>{let root={};for(const [letter,bits] of Object.entries(HUFFMAN)){let q=root;for(const bit of bits)q=q[bit]??={};q.char=letter;}return root;})();
+export function huffmanDecode(bits){
+  let result='',q=HUFF_TREE;for(const bit of bits){q=q[bit];if(!q)return '';if(q.char!==undefined){result+=q.char;q=HUFF_TREE;}}
+  return q===HUFF_TREE?result:'';
 }
