@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {SoftFrameCombiner,hamming32,llrSignature,subtractDecodedToneSequence} from '../rx-enhance.js';
+const llr=Float32Array.from({length:174},(_,i)=>i%2?-.5:.5);
+const combiner=new SoftFrameCombiner({ttlMs:60000});
+assert.equal(hamming32(0xffffffff,0),32);
+assert.equal(llrSignature(llr),llrSignature(llr));
+const a={mode:'normal',frequency:1500,phase:.4,slot:100,atMs:50000,llr};
+assert.equal(combiner.observe(a).combined,false);
+assert.equal(combiner.observe({...a,atMs:51000}).combined,false,'same OTA slot must not combine');
+const sum=combiner.observe({...a,slot:101,atMs:61000});
+assert.equal(sum.combined,true);assert.equal(sum.repeats,2);assert.equal(sum.llr[0],1);
+assert.equal(combiner.observe({...a,frequency:1700,slot:102,atMs:62000}).combined,false);
+assert.equal(combiner.observe({...a,mode:'fast',slot:103,atMs:63000}).combined,false);
+const alt=Float32Array.from(llr,x=>-x);
+assert.equal(combiner.observe({...a,llr:alt,slot:104,atMs:64000}).combined,false);
+combiner.markDecoded({mode:'normal',frequency:1500,phase:.4});
+assert.equal(combiner.entries.some(x=>x.mode==='normal'&&x.frequency===1500),false);
+const tones=Array.from({length:79},(_,i)=>i%8);
+const sps=600,sr=12000,offset=100,signal=new Float32Array(90000);
+let phase=0;
+for(let i=0;i<79*sps;i++){
+ const tone=tones[(i/sps)|0],fade=Math.max(0,Math.min(1,i/(sps*.12),(79*sps-i)/(sps*.12)));
+ phase+=2*Math.PI*(1200+tone*sr/sps)/sr;if(phase>2*Math.PI)phase-=2*Math.PI;
+ signal[offset+i]=.75*Math.sin(phase)*fade+.07*Math.sin(2*Math.PI*700*i/sr);
+}
+const p0=signal.reduce((s,v)=>s+v*v,0);
+const fit=subtractDecodedToneSequence(signal,{start:offset,frequency:1200,sps,tones});
+const p1=signal.reduce((s,v)=>s+v*v,0);
+assert.equal(fit.applied,true);assert.ok(fit.fit>.8);assert.ok(p1/p0<.05);
+assert.equal(subtractDecodedToneSequence(signal,{start:0,frequency:1200,sps,tones}).applied,false);
+console.log('RX enhancement tests passed: separate OTA slots, signature guard, signal cancellation');
