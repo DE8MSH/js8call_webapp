@@ -27,4 +27,16 @@ for(const [mode,freq,shift,sr,noise] of [['normal',650,.12,12000,.04],['fast',25
  const r=await rx(a,'normal',12000);
  check(!r.ok,'No false positive in deterministic noise-only window');
 }
+{
+ // Regression: a wrong check-node sign in the WASM LDPC min-sum decoder
+ // used to reject this valid noisy transport frame.
+ const mem=new Uint8Array(w.memory.buffer);
+ mem.set(Buffer.from('0123456789AB'),w.js8_input_ptr());w.js8_encode(3,0);
+ const tones=Array.from(new Int32Array(w.memory.buffer,w.js8_tones_ptr(),79));
+ const a=new Float32Array(180000);let phase=0;
+ for(let i=0;i<79*1920;i++){const hz=1500+tones[Math.floor(i/1920)]*6.25;phase+=2*Math.PI*hz/12000;if(phase>=2*Math.PI)phase-=2*Math.PI;a[6000+i]=Math.sin(phase)*.7;}
+ let seed=42;for(let i=0;i<a.length;i++){seed=(Math.imul(1664525,seed)+1013904223)>>>0;a[i]+=10*(seed/4294967296-.5)*2;}
+ const r=await rx(a,'normal',12000);
+ check(r.ok && r.text==='0123456789AB', 'Weak-signal LDPC parity-check sign regression (fixed AWGN seed)');
+}
 console.log('Passed '+tests+' wideband scan cases.');
