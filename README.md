@@ -4,6 +4,12 @@
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
 
+## CAT-Ausbau · Yaesu FT-450/FT-450D
+
+Über **Konfiguration → CAT · Yaesu FT-450…** lässt sich ein separater WebSerial-CAT-Port öffnen. Wähle die am FT-450 eingestellte CAT-Baudrate (Werkseinstellung üblicherweise 4800) und 1 oder 2 Stopbits passend zum Gerät. Die Webapp fragt die VFO-A-Frequenz alle 3 Sekunden mit `FA;` ab, dekodiert `FAxxxxxxxx;` und stellt den Wert in der Dial-Anzeige dar. Mit **Band am Funkgerät einstellen** kann die Frequenz des ausgewählten JS8-Bandes über `FAxxxxxxxx;` gesetzt werden, aber nur nach expliziter Bestätigung. Die Funktion verwendet **kein automatisches CAT-PTT**, sendet keine beliebigen CAT-Kommandos und ist nicht für andere Geräteprofile freigeschaltet. FT-450 CAT RTS/RTTY kann hardwareabhängig gesonderte Sicherheitshinweise erfordern; im CAT-Port werden RTS und DTR deshalb vorsorglich deaktiviert. Hardwaretests mit angeschlossenem Gerät stehen aus.
+
+Die verwendeten Kommandos stammen aus dem offiziellen [FT-450 CAT Operation Reference Book](https://yaesu.com/Files/4CB893D7-1018-01AF-FA97E9E9AD48B50C/FT-450_CAT_Operation_Reference_Book.pdf). Die Protokolltests liegen in `tests/ft450-cat.mjs`. Diese Funktion ersetzt **nicht** Hamlib und bietet keine vollständige Unterstützung für Xiegu G90 oder andere Funkgeräte.
+
 ## Stand 0.7 – JS8Call MSG-Frames, CRC16 und echte TX-Ausgangswahl
 
 **Gerichtete Nachricht:** Im TX-Nachrichteneditor den Modus **Gerichtete MSG · JS8Call + CRC16** wählen, eine Station auswählen und einen Text eingeben. Die Webapp baut einen originalen JS8Call-Directed-Header (`MSG`, Command 9) sowie JSC-kodierte Folgerahmen, hängt die CRC16-KERMIT-Prüfsumme im JS8Call-Base41-Format an und setzt FIRST auf den Directed-Header und LAST auf den letzten Datenframe. Freitext an `@ALLCALL` bleibt im Modus **Freitext · JSC** möglich; automatische Store-and-forward-Routen sind nicht implementiert.
