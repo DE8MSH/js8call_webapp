@@ -101,8 +101,27 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
       }
       btn.addEventListener('click',()=>selectStation(c.call));
       btn.addEventListener('dblclick',()=>{selectStation(c.call);tuneStation();});
+      btn.addEventListener('contextmenu',event=>{event.preventDefault();selectStation(c.call);openStationMenu(event,c);});
       box.append(btn);
     }
+  }
+  function openStationMenu(event,station){
+    document.getElementById('stationContextMenu')?.remove();
+    const menu=el('div','station-context');menu.id='stationContextMenu';
+    const actions=[
+      ['Offset '+Math.round(station.freq)+' Hz wählen',()=>tuneStation()],
+      ['SNR? an '+station.call+' vorbereiten',()=>quickCommand(station.call,'SNR?')],
+      ['GRID? an '+station.call+' vorbereiten',()=>quickCommand(station.call,'GRID?')],
+      ['INFO? an '+station.call+' vorbereiten',()=>quickCommand(station.call,'INFO?')],
+      ['Rufzeichen kopieren',()=>navigator.clipboard?.writeText(station.call)],
+      ['Station aus Liste entfernen',()=>{callbook.delete(station.call);if(selected===station.call)selectStation('');paintCalls();}]
+    ];
+    function quickCommand(call,cmd){$('targetCall').value=call;$('directCmd').value=cmd;$('makeDirected').click();}
+    for(const [label,callback] of actions){const button=el('button','',label);button.type='button';button.onclick=()=>{menu.remove();callback();};menu.append(button);}
+    document.body.append(menu);
+    menu.style.left=Math.min(event.clientX,Math.max(0,innerWidth-270))+'px';
+    menu.style.top=Math.min(event.clientY,Math.max(0,innerHeight-265))+'px';
+    setTimeout(()=>document.addEventListener('pointerdown',function close(e){if(!menu.contains(e.target)){menu.remove();document.removeEventListener('pointerdown',close);}},true),0);
   }
   function paintMessages(){
     const box=$('rxMessages');box.replaceChildren();
