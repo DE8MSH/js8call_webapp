@@ -1,0 +1,35 @@
+/* JS8Web workstation extensions GPL-3.0-or-later */
+.js8-desktop .composer-pane{max-height:none;overflow:visible}
+.js8-desktop .center-pane{grid-template-rows:minmax(200px,1fr) minmax(305px,1.5fr)}
+.js8-desktop .text-composer{display:grid;gap:8px;min-width:0}
+.js8-desktop .text-composer .heading{margin-bottom:0}
+.js8-desktop .text-composer textarea{width:100%;min-height:90px;resize:vertical;background:#fff;color:#20301a;border:1px solid #97b292;border-radius:3px;padding:10px;font:13px/1.45 ui-monospace,monospace}
+.js8-desktop .text-composer .compose-target{display:flex;gap:6px;align-items:end}
+.js8-desktop .text-composer .compose-target label{flex:1}
+.js8-desktop .text-composer .compose-target button{white-space:normal;max-width:115px;padding:5px;font-size:10px}
+.js8-desktop .tx-macros{display:flex;gap:5px;flex-wrap:wrap}
+.js8-desktop .tx-macros button{font-size:10px;padding:6px 9px}
+.js8-desktop .composer-warning{font-size:10px;color:#695b2c;background:#f5e6a7;padding:7px;border-radius:3px}
+.js8-desktop .text-queue{overflow:auto;max-height:130px;border:1px solid #a4b7a0;background:#f8fff1;color:#243521;font-size:11px}
+.js8-desktop .queued-frame{display:grid;grid-template-columns:35px 1fr 100px;gap:6px;padding:4px 7px;border-bottom:1px solid #d3dfcf;align-items:center}
+.js8-desktop .queued-frame code{overflow-wrap:anywhere;color:#163d24}
+.js8-desktop .queue-status{font-size:11px;font-weight:650;color:#31522c}
+.js8-desktop .tx-confirm{background:#f7f4d5;border:1px solid #cdbb77;padding:7px;color:#2d3b23!important}
+.js8-desktop .legacy-frame-editor{border-top:1px solid #98b092;padding-top:8px;margin-top:4px}
+.js8-desktop .legacy-frame-editor>summary{font-size:11px;cursor:pointer;color:#476240}
+.js8-desktop .legacy-frame-editor .heading{margin-top:10px}
+.js8-desktop .message-shortcuts{display:flex;gap:5px;padding:3px 0 7px}
+.js8-desktop .message-shortcuts button{font-size:11px;padding:6px 12px;border-radius:3px}
+.js8-window{position:fixed;z-index:400;resize:both;overflow:hidden;min-width:320px;min-height:210px;width:min(690px,90vw);height:min(445px,76vh);background:#edf2f6;color:#172333;border:1px solid #596a7e;box-shadow:0 16px 45px #0009;display:flex;flex-direction:column;border-radius:3px}
+.js8-window[hidden]{display:none!important}
+.js8-window .window-titlebar{background:#253d58;color:#fff;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:move;touch-action:none;font-size:13px;user-select:none}
+.js8-window .window-titlebar button{border:none;background:#bb5553;color:#fff;border-radius:2px;font-size:17px;line-height:1;width:25px;height:23px;padding:1px}
+.js8-window .window-body{overflow:auto;flex:1;min-height:0;font-size:12px}
+.js8-window .msg-table-head,.js8-window .msg-table-row{display:grid;grid-template-columns:135px 100px minmax(180px,1fr);gap:7px;padding:6px 9px;border-bottom:1px solid #bbc8d4}
+.js8-window .msg-table-head{position:sticky;top:0;background:#d0dce7}
+.js8-window .msg-table-row:nth-child(even){background:#e0e8f0}
+.js8-window .msg-table-row span{overflow-wrap:anywhere}
+.js8-window .window-tools{display:flex;gap:5px;padding:8px;background:#d2dce6;flex-wrap:wrap}
+.js8-window .window-tools input{min-width:105px;flex:1;border-radius:2px;color:#1b2a3b;background:white;padding:6px;font-size:11px}
+.js8-window .window-tools button{font-size:11px;color:white;padding:6px 9px;border-radius:2px}
+@media(max-width:740px){.js8-window{left:3vw!important;top:50px!important;width:94vw;height:60vh}.js8-desktop .composer-pane{max-height:none}.js8-desktop .text-composer .compose-target{flex-wrap:wrap}}
