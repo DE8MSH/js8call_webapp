@@ -9,7 +9,7 @@ function info(s){$('txInfo').textContent=s;}
 function utc(){const d=new Date(Date.now()+Number($('offset').value||0));$('utc').textContent=d.toISOString().slice(11,19)+' UTC';const m=MODES[$('mode').value],r=(d.getTime()%(m.period*1000))/1000;$('clockStatus').textContent=`Zeitfenster ${r.toFixed(1)} / ${m.period} s · Browseruhr`;}setInterval(utc,250);utc();
 function mode(){return MODES[$('mode').value];}
 function freq(){return Math.min(3000,Math.max(300,Number($('audioFreq').value)||1500));}
-async function init(){try{const resp=await fetch('./js8-core.wasm');if(!resp.ok)throw Error('HTTP '+resp.status);const {instance}=await WebAssembly.instantiate(await resp.arrayBuffer());wasm=instance.exports;worker=new Worker(new URL('./rx-worker.js?v=0.3',import.meta.url),{type:'module'});worker.onmessage=({data})=>{const r=pending.get(data.id);if(r){pending.delete(data.id);r(data);} };worker.onerror=e=>status('RX-Worker-Fehler: '+e.message);$('engine').textContent='✓ JS8-Kern · WASM aktiv';status('WASM-Codec geladen · Test mit „Eigenen Frame testen“ möglich.');}catch(e){$('engine').textContent='WASM nicht verfügbar';status('WASM konnte nicht geladen werden: '+e.message+' · Bitte über HTTPS oder HTTP-Server aufrufen.');}}
+async function init(){try{const resp=await fetch('./js8-core.wasm');if(!resp.ok)throw Error('HTTP '+resp.status);const {instance}=await WebAssembly.instantiate(await resp.arrayBuffer());wasm=instance.exports;worker=new Worker(new URL('./rx-worker.js?v=0.4',import.meta.url),{type:'module'});worker.onmessage=({data})=>{const r=pending.get(data.id);if(r){pending.delete(data.id);r(data);} };worker.onerror=e=>status('RX-Worker-Fehler: '+e.message);$('engine').textContent='✓ JS8-Kern · WASM aktiv';status('WASM-Codec geladen · Test mit „Eigenen Frame testen“ möglich.');}catch(e){$('engine').textContent='WASM nicht verfügbar';status('WASM konnte nicht geladen werden: '+e.message+' · Bitte über HTTPS oder HTTP-Server aufrufen.');}}
 function make(){if(!wasm)throw Error('WASM-Engine nicht bereit');const text=$('message').value;const alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-+';if(text.length!==12||[...text].some(c=>!alphabet.includes(c)))throw Error('Es sind genau 12 gültige Frame-Zeichen erforderlich.');const mem=new Uint8Array(wasm.memory.buffer),p=wasm.js8_input_ptr();for(let i=0;i<12;i++)mem[p+i]=text.charCodeAt(i);const typ=Number($('type').value),m=mode();const code=wasm.js8_encode(typ,m.cos);if(code!==0)throw Error('WASM-Encoder-Fehler '+code);const view=new Int32Array(wasm.memory.buffer,wasm.js8_tones_ptr(),79);return {text,typ,tones:Array.from(view),mode:$('mode').value,freq:freq()};}
 function prepare(){try{prepared=make();$('tx').disabled=!$('txconfirm').checked;info(`79 echte JS8-Tonsymbole generiert · ${prepared.mode.toUpperCase()} · ${prepared.freq} Hz · Frame-Typ ${prepared.typ}.`);status('JS8-Frame vorbereitet: '+prepared.text);}catch(e){prepared=null;$('tx').disabled=true;status(e.message);info(e.message);}}
 $('prepare').onclick=prepare;$('txconfirm').onchange=()=>{$('tx').disabled=!prepared||!$('txconfirm').checked;};['mode','audioFreq','type','message'].forEach(id=>$(id).addEventListener('change',()=>{prepared=null;$('tx').disabled=true;info('Einstellungen geändert: Frame neu vorbereiten.');}));
@@ -28,8 +28,9 @@ function row(result,origin,meta={}){
   if(seenFrames.has(key))continue;
   seenFrames.add(key);if(seenFrames.size>500){seenFrames.delete(seenFrames.values().next().value);}
   let parsed;try{parsed=parseFrame(f.text);}catch{parsed={display:'Unbekannt',kind:'unknown'};}
-  const item={time:new Date(ms).toISOString(),mode:meta.mode||$('mode').value,type:f.type,text:f.text,display:parsed.display,frequency:f.frequency,sync:f.sync,origin};
+  const item={time:new Date(ms).toISOString(),mode:meta.mode||$('mode').value,type:f.type,text:f.text,display:parsed.display,parsed,frequency:f.frequency,sync:f.sync,origin};
   logs.unshift(item);added++;
+  window.dispatchEvent(new CustomEvent('js8:frame',{detail:item}));
   let list=$('log');list.querySelector('.empty')?.remove();let r=document.createElement('div');r.className='logrow';
   let a=document.createElement('time');a.textContent=item.time.slice(11,19);
   let b=document.createElement('strong');b.textContent=item.mode.toUpperCase();
@@ -39,7 +40,7 @@ function row(result,origin,meta={}){
  }
  if(added)$('framecount').textContent=logs.length+' Frames';
 }
-$('clear').onclick=()=>{seenFrames.clear();logs=[];$('log').replaceChildren();$('framecount').textContent='0 Frames';};
+$('clear').onclick=()=>{seenFrames.clear();logs=[];window.dispatchEvent(new Event('js8:clear'));$('log').replaceChildren();$('framecount').textContent='0 Frames';};
 $('csv').onclick=()=>{const rows=[['UTC','Mode','Type','Decoded','RawFrame','AudioHz','Sync','Quelle'],...logs.map(x=>[x.time,x.mode,x.type,x.display,x.text,x.frequency,x.sync,x.origin])];let csv=rows.map(x=>x.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\r\n');download(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}),'js8web-rx-log.csv');};
 $('synthetic').onclick=async()=>{try{if(!worker)throw Error('Worker nicht bereit');const p=make();status('Eigenen JS8-Frame über simulierten 12-kHz-Funkkanal decodieren …');const r=await rxDecode({synthetic:true,tones:p.tones,freq:p.freq,mode:p.mode});row(r,'Selbsttest');}catch(e){status('Selbsttest: '+e.message)}};
 $('wav').onclick=()=>$('wavFile').click();
