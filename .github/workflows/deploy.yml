@@ -45,6 +45,8 @@ jobs:
           node --check js8-messages.js
           node --check ft450-cat.js
           node --check tx-slots.js
+          node --check sw.js
+          node --check offline.js
           node --check desktop-extra.js
           node tests/test.mjs
           node tests/rx-scan.mjs
@@ -55,6 +57,8 @@ jobs:
           node tests/message-flow.mjs
           node tests/ft450-cat.mjs
           node tests/tx-slots.mjs
+          node tests/offline.mjs
+          node -e "JSON.parse(require('fs').readFileSync('manifest.webmanifest','utf8'))"
 
       - name: Save precompiled WASM as downloadable build artifact
         uses: actions/upload-artifact@v4
