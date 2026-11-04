@@ -1,4 +1,4 @@
-# JS8Web LAB 0.4 – GitHub-Pages-Webapp
+# JS8Web LAB 0.5 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
@@ -20,7 +20,8 @@ Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solch
 | CSV-Logging | Implementiert |
 | PTT über serielle RTS/DTR-Leitung | Browserseitig implementiert, Hardwaretest offen |
 | JS8Call-Protokoll: CQ, HB, gerichtete Kurzbefehle (Einzelrahmen) | **Teilport**; Sender und Parser ergänzt |\n| Alte Huffman-Textframes und Heartbeat-SNR | Implementiert, Tests mit echten RX-Frames |
-| Vollständiges JS8Call-Textprotokoll (JSC), Inbox und Store-and-forward | **Nein** |
+| Vollständige JSC-Wortbuch-Dekompression (262144 Wörter) | **Ja: RX-Teilport**, alle Wörter in acht statischen JSON-Dateien; On-air-Frame-Tests |
+| Vollständige JS8Call-Nachrichtenverwaltung, Inbox und Store-and-forward | **Nein** |
 | Vollständiger Softdecoder mit zeit-/frequenzbreitem Suchraster wie im Original | **Nein** |
 | Hamlib/CAT-Transceiversteuerung, USB-PTT für alle Geräte | **Nein** |
 | Browser-Unterstützung ohne WebSerial | RX/TX-Audio möglich; keine serielle PTT |
@@ -34,13 +35,29 @@ Der Empfänger sucht standardmäßig **300–3000 Hz** nach Costas-Synchronisati
 
 Die neue Menüleiste enthält **Datei, Konfiguration, Modus, Log, Ansicht, Steuerung, Hilfe**. Die Anordnung folgt der originalen JS8Call-Arbeitsweise: **Band Activity links, empfangene Nachrichten und TX-Eingabe in der Mitte, Call Activity rechts, Wasserfall unten**. Rufzeichen und Alter stammen aus tatsächlich decodierten Frames. Ein Klick wählt das Zielrufzeichen; Doppelklick stimmt die Audiofrequenz ab. Die Auswahlmenüs öffnen Einstellungen und rufen echte RX-/CQ-/WAV-/Log-/Halt-Funktionen auf. Stations-Einstellungen werden lokal gespeichert; TX-Freigaben ausdrücklich nicht.
 
-Der Protokoll-Decoder unterstützt jetzt **HEARTBEAT SNR / CMD 29 mit dB-Anzeige**, ACK und weitere Kurzbefehle sowie das ältere Huffman-Textformat. Die neuere **JSC-Wortbuchkompression**, vollständige Textverkettung, Inbox und automatisches Nachrichtenrouting sind weiterhin nicht portiert. `tests/protocol-rx.mjs` enthält Rohframe-Regressionen aus dem eingereichten JS8Web-Log mit Stationen wie MM0ZFG, G5TAR, 2E0RLZ, PA3ATX und M6MHG.
+Der Protokoll-Decoder unterstützt jetzt **HEARTBEAT SNR / CMD 29 mit dB-Anzeige**, ACK und weitere Kurzbefehle sowie das ältere Huffman-Textformat. Die **JSC-Wortbuch-Dekompression ist seit v0.5 eingebaut** und arbeitet ohne einen Backendserver. Textfragmente mit FIRST-/LAST-Kennungen werden nach Frequenz und aufeinanderfolgenden Zeitfenstern zusammengesetzt. Eine vollständige QSO-/Inbox-/Store-and-forward-Verwaltung und ein originalgetreuer Softdecoder fehlen weiterhin. `tests/protocol-rx.mjs` enthält Rohframe-Regressionen aus dem eingereichten JS8Web-Log mit Stationen wie MM0ZFG, G5TAR, 2E0RLZ, PA3ATX und M6MHG.
+
+## JSC-Decodierung und reale Beispielsignale (v0.5)
+
+Das Originalwörterbuch aus [JS8Call `jsc_map.cpp`](https://github.com/js8call/js8call/blob/main/jsc_map.cpp) enthält **262.144 Einträge**. Es liegt im Unterordner `jsc-dict/` als acht nach Index geordnete JSON-Dateien mit je 32.768 Einträgen. Der Decoder `jsc.js` übernimmt den ursprünglichen (s=7,c=9)-Dense-Code mit optionalem Leerzeichen hinter Wörtern, entfernt das JS8-Padding und lädt nur die benötigten Wörterbuchdateien.
+
+**Verifiziert an Rohframes aus dem echten Empfänger-CSV vom 4. November 2026:**
+
+| Rawframe | JSC-Freitext |
+|---|---|
+| `wpKlK1tYGr++` | `NICE DAY HERE, ` |
+| `+qxsyDGlB2++` | `WILL POP IN AND ` |
+| `tc4+fKl65A++` | `OUT WHEN I GET A ` |
+
+Frames mit erkanntem JSC-Inhalt erscheinen nach dem initialen Wörterbuch-Laden automatisch als Klartext im Band- und Nachrichtenfenster. Der RX-Pfad bleibt unverändert quellseitig lokal: Mikrofon/USB-Audio → Browser/WebWorker → WebAssembly LDPC/CRC → JSC-Wortbuch. Für 44,1/48-kHz-Soundkarten nutzt der Decoder jetzt einen Polyphase-Tiefpass vor der Reduktion auf 12 kHz, um Aliasing zu mindern.
+
+`node tests/jsc.mjs` testet die Wörterbuch-Integrität und diese drei realen Rohframes. Das bedeutet **keinen Nachweis identischer schwachsignalseitiger Empfindlichkeit mit Desktop-JS8Call**. JSC-TX-Freitextkompression, volles Nachrichtenrouting, Inbox, CAT und weitere native Funktionen sind noch nicht fertig.
 
 ## GitHub Pages – automatische Bereitstellung
 
 Das Repository https://github.com/DE8MSH/js8call_webapp enthält die Quelldateien.
 Der Workflow `.github/workflows/deploy.yml` baut `js8-core.wasm` aus `js8-core.c`,
-führt die bisherigen und die neuen Breitband-Empfangstests aus und veröffentlicht das Ergebnis via GitHub Pages.
+führt Transport-, Breitband-, Protokoll- und JSC-Empfangstests aus und veröffentlicht das Ergebnis via GitHub Pages.
 Der erzeugte WASM-Codec ist Bestandteil des Pages-Deployments und wird zusätzlich als herunterladbares Build-Artefakt gespeichert.
 Es wird kein externer Backendserver benötigt.
 
