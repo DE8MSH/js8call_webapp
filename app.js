@@ -69,25 +69,41 @@ function row(result,origin,meta={}){
 $('clear').onclick=()=>{seenFrames.clear();logs=[];window.dispatchEvent(new Event('js8:clear'));$('log').replaceChildren();$('framecount').textContent='0 Frames';};
 $('csv').onclick=()=>{const rows=[['UTC','Mode','Type','Decoded','RawFrame','AudioHz','Sync','Decoder','Quelle'],...logs.map(x=>[x.time,x.mode,x.type,x.display,x.text,x.frequency,x.sync,x.strategy,x.origin])];let csv=rows.map(x=>x.map(v=>'"'+String(v??'').replaceAll('"','""')+'"').join(';')).join('\r\n');download(new Blob(['\ufeff',csv],{type:'text/csv;charset=utf-8'}),'js8web-rx-log.csv');};
 $('synthetic').onclick=async()=>{try{if(!worker)throw Error('Worker nicht bereit');const p=make();status('Eigenen JS8-Frame über simulierten 12-kHz-Funkkanal decodieren …');const r=await rxDecode({synthetic:true,tones:p.tones,freq:p.freq,mode:p.mode});row(r,'Selbsttest');}catch(e){status('Selbsttest: '+e.message)}};
+
 $('wav').onclick=()=>$('wavFile').click();
+let wavScanning=false;
+$('wavStop').onclick=()=>{wavScanning=false;$('wavStop').disabled=true;status('WAV-Analyse: Abbruch angefordert.');};
 $('wavFile').onchange=async e=>{
- const f=e.target.files[0];if(!f)return;
+ const file=e.target.files[0];if(!file)return;
+ if(wavScanning){status('WAV-Analyse läuft bereits.');return;}
+ wavScanning=true;$('wavStop').disabled=false;$('wav').disabled=true;
  try{
   if(!worker)throw Error('Worker nicht bereit');
-  const ac=new AudioContext(),ab=await ac.decodeAudioData(await f.arrayBuffer());await ac.close();
-  const m=mode(),sr=ab.sampleRate,src=ab.getChannelData(0),period=m.period,needed=79*m.sps/12000;
-  const duration=src.length/sr,maxStart=Math.max(0,duration-period),hop=Math.min(2,Math.max(.5,(period-needed)/2));
-  if(duration<needed)throw Error('WAV kürzer als ein JS8-Frame');
+  const ac=new AudioContext();
+  let ab;
+  try{ab=await ac.decodeAudioData(await file.arrayBuffer());}finally{await ac.close();}
+  const sr=ab.sampleRate,src=ab.getChannelData(0),duration=src.length/sr,
+    modes=$('wavAllModes').checked?Object.keys(MODES):[$('mode').value],wavStart=Date.now();
   let good=0,checks=0;
-  for(let begin=0;begin<=maxStart+1e-7;begin+=hop){
-   const from=Math.floor(begin*sr),to=Math.min(src.length,from+Math.ceil((period+2.5)*sr));
-   const data=new Float32Array(src.slice(from,to));
-   const res=await rxDecode({samples:data,sr,mode:$('mode').value,freq:freq(),auto:$('scanAuto').checked,enhanced:$('enhancedRx').checked,startMs:Date.now()+begin*1000});
-   if(res.ok){good+=res.results?.length||1;row(res,'WAV '+f.name,{startMs:Date.now()+begin*1000,mode:$('mode').value});}
-   if(++checks%4===0)status('WAV-Analyse: '+checks+' Fenster · '+good+' erfolgreiche Decodes');
+  for(const name of modes){
+   if(!wavScanning)break;
+   const m=MODES[name],period=m.period,needed=79*m.sps/12000;
+   if(duration<needed){status('WAV '+name.toUpperCase()+': zu kurz für vollständigen Frame');continue;}
+   const maxStart=Math.max(0,duration-period),hop=Math.min(2,Math.max(.5,(period-needed)/2));
+   for(let begin=0;begin<=maxStart+1e-7&&wavScanning;begin+=hop){
+    const from=Math.floor(begin*sr),to=Math.min(src.length,from+Math.ceil((period+2.5)*sr));
+    const data=new Float32Array(src.slice(from,to)),startMs=wavStart+begin*1000;
+    const res=await rxDecode({samples:data,sr,mode:name,freq:freq(),auto:$('scanAuto').checked,
+      enhanced:$('enhancedRx').checked,startMs});
+    if(!wavScanning)break;
+    if(res.ok){good+=res.results?.length||1;row(res,'WAV '+file.name,{startMs,mode:name});}
+    if(++checks%4===0)status('WAV-Analyse: '+name.toUpperCase()+' · '+checks+' Fenster · '+good+' Decodes');
+   }
   }
-  status('WAV fertig: '+checks+' Suchfenster · '+good+' gültige Decodes'+(good?'':' · Prüfe Modus und Audioquelle'));
- }catch(ex){status('WAV-Fehler: '+ex.message);}e.target.value='';
+  status((wavScanning?'WAV fertig':'WAV abgebrochen')+': '+checks+' Suchfenster · '+good+
+    ' Decodes'+(good?'':' · Modus/Audioeingang prüfen'));
+ }catch(ex){status('WAV-Fehler: '+ex.message);}
+ finally{wavScanning=false;$('wavStop').disabled=true;$('wav').disabled=false;e.target.value='';}
 };
 async function getAudio(){
  if(!ctx)ctx=new AudioContext({latencyHint:'interactive'});
