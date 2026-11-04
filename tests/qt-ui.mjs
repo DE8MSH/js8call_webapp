@@ -13,7 +13,7 @@ for(const path of ['original-ui.js','original-ui.css']){
 }
 for(const token of ['macroHorizontalWidget','controlHorizontalWidget',
   'tableWidgetRXAll','textEditRX','callDetailTextBrowser','callsVerticalSplitter',
-  'WideGraph.ui','QSplitter']){
+  'WideGraph.ui','QSplitter','textVerticalSplitter']){
  assert.ok(doc.includes(token),'documented original Qt source mapping: '+token);
 }
 for(const id of ['qtMacroToolbar','qtControlToolbar','qtCallDetails',
@@ -35,5 +35,7 @@ assert.ok(ui.includes("addEventListener('js8:station-selected'"),'station detail
 assert.ok(css.includes('@media(max-width:950px)'),'mobile layout fallback exists');
 assert.ok(ui.includes('pointercancel'),'splitters support cancelled pointer gestures');
 assert.ok(ui.includes('ArrowLeft')&&ui.includes('ArrowRight'),'keyboard accessible splitters');
+assert.ok(ui.includes('ArrowUp')&&ui.includes('ArrowDown'),'vertical RX/composer divider supports keyboard');
+assert.ok(css.includes('qt-v-grip'),'vertical Qt splitter is styled');
 assert.ok(ui.includes('msg')===false||ui.includes('makeDirected'),'directed RF action uses existing encoder');
 console.log('Qt UI parity source/controls/cache integration checks PASS');
