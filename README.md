@@ -1,8 +1,20 @@
-# JS8Web LAB 0.8 – GitHub-Pages-Webapp
+# JS8Web LAB 0.9 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
+
+## Stand 0.9 – Zuverlässige UTC-TX-Steuerung und optionaler Offline-Betrieb
+
+**Serielle PTT vor Audio:** Der neue Controller `tx-slots.js` richtet TX an UTC-Slots aus und aktiviert bei gewählter RTS/DTR-Steuerung zunächst PTT. Erst nach erfolgreicher Bestätigung durch WebSerial wird das Audio in WebAudio eingeplant. Wird der Slot durch Browser- oder USB-Latenz verpasst, bricht der Controller die Audioausgabe ab. Wird die PTT-Freigabe nicht bestätigt, gilt der Frame **nicht** als erfolgreich beendet. Die Sende-Warteschlange wartet auf Audio-Ende **und** PTT-Aus bis zum nächsten Frame.
+
+**TX-Abbruch:** STOP unterbricht auch geplante, noch nicht gestartete Frames. Browser-Tab im Hintergrund, `pagehide`, und entzogenes TX-Einverständnis lösen ebenfalls einen Abbruch aus (die Deaktivierung von RTS/DTR hängt weiterhin vom funktionierenden USB-Adapter ab). PTT-Kommandos werden serialisiert, sodass `PTT aus` nicht vor einer noch laufenden `PTT an`-Operation überholt werden kann. Wenn RTS/DTR ausgewählt ist, aber kein serieller Port verbunden ist, wird **kein** TX-Audio gestartet. `PTT aus` erlaubt weiterhin Audio-only-Tests. Die Vorlaufzeit ist zwischen 100 und 1500 ms einstellbar; Standard 350 ms. Beachte: Browser-Timing ist nicht hart echtzeitfähig und ein physisch klemmender Adapter kann nicht durch JavaScript zwangsweise abschalten. Funkgerät immer überwachen.
+
+**Offline / GitHub Pages:** Die App registriert `sw.js` unter dem Repository-spezifischen HTTPS-Scope. Die HTML/CSS/JavaScript-Dateien und `js8-core.wasm` werden beim ersten erfolgreichen Laden per CacheStorage gespeichert. Browserseitig unter **Status / Diagnose → Offline-Betrieb** kann mit `JSC-Wörterbuch offline speichern` das komplette, große JSC-Dictionary (8 Dateien) zusätzlich heruntergeladen und nachgewiesen werden. **Offline-Status prüfen** prüft die Cacheeinträge. Kein Backend und keine externen APIs erforderlich. Browserdaten-/Site-Clear löscht auch diesen Cache; ein erster Online-Aufruf ist notwendig.
+
+**Tests:** `tests/tx-slots.mjs` testet UTC-Berechnung, PTT-Schaltreihenfolge, Trennen, abgebrochene Slots, langsam reagierende serielle Schnittstellen und fehlgeschlagene PTT-Freigabe. `tests/offline.mjs` prüft den Service-Worker-Scope, WASM-Precache, Offline-Fallback und Cache-on-use des JSC-Wörterbuchs. Synthetische Tests ersetzen nicht die USB-PTT-/HF-Livevalidierung.
+
+**Status der Gesamtportierung:** Die Webapp ist weiterhin kein vollständiges Desktop-JS8Call. Insbesondere originaler WSJT-X-Softdecoder, Nachrichten-Routing/Store-and-forward, echte remote Inbox und Hamlib-Unterstützung sind noch nicht vollständig portiert.
 
 ## Stand 0.8 – verbesserter RX-Decoder (JS8Call-Teilaspekte)
 
