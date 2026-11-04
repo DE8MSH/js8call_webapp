@@ -177,6 +177,7 @@ function liveStatus(){
 }
 const liveQueue=new BoundedLiveDecoder({
  concurrency:2,maxQueued:4,maxAgeMs:30000,
+ laneForMode:mode=>activeModes.length===4?(mode==='normal'||mode==='slow'?0:1):0,
  now:()=>Date.now()+Number($('offset').value||0),
  decode:async(job,lane)=>{
   const decoder=liveWorkers[lane];
