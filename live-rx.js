@@ -52,14 +52,17 @@ export class LiveSlotPlanner{
 
 /** Bounded FIFO with two independent DSP lanes, no unbounded WebWorker backlog.
  * decode(job,lane) must settle. A promise rejection does not poison the queue.
- * reset() invalidates all in-flight callbacks; worker termination is external. */
+ * reset() invalidates all in-flight callbacks; worker termination is external.
+ * laneForMode optionally pins one submode to the same worker to retain its
+ * soft-combiner history across UTC slots. */
 export class BoundedLiveDecoder{
  constructor({decode,onResult=()=>{},onError=()=>{},onDrop=()=>{},now=()=>Date.now(),
-   concurrency=2,maxQueued=5,maxAgeMs=30000}={}){
+   concurrency=2,maxQueued=5,maxAgeMs=30000,laneForMode=null}={}){
   if(typeof decode!=='function'||!Number.isInteger(concurrency)||concurrency<1||
      !Number.isInteger(maxQueued)||maxQueued<1)throw Error('Live-RX: invalid decoder configuration');
   this.decode=decode;this.onResult=onResult;this.onError=onError;this.onDrop=onDrop;
   this.now=now;this.maxAgeMs=maxAgeMs;this.maxQueued=maxQueued;
+  this.laneForMode=laneForMode;
   this.lanes=Array.from({length:concurrency},()=>null);
   this.waiting=[];this.generation=0;
   this.dropped=0;this.completed=0;
@@ -91,7 +94,8 @@ export class BoundedLiveDecoder{
    while(this.waiting.length){
     // Keep frames of the same submode sequential; completing the newer
     // frame first would corrupt JSC message reassembly.
-    const eligible=this.waiting.findIndex(j=>!this.lanes.some(active=>active?.mode===j.mode));
+    const eligible=this.waiting.findIndex(j=>(!this.laneForMode||this.laneForMode(j.mode)===lane)&&
+      !this.lanes.some(active=>active?.mode===j.mode));
     if(eligible<0)break;
     job=this.waiting.splice(eligible,1)[0];
     if(this.now()-job.endMs<=this.maxAgeMs)break;
