@@ -33,3 +33,10 @@
 .js8-window .window-tools input{min-width:105px;flex:1;border-radius:2px;color:#1b2a3b;background:white;padding:6px;font-size:11px}
 .js8-window .window-tools button{font-size:11px;color:white;padding:6px 9px;border-radius:2px}
 @media(max-width:740px){.js8-window{left:3vw!important;top:50px!important;width:94vw;height:60vh}.js8-desktop .composer-pane{max-height:none}.js8-desktop .text-composer .compose-target{flex-wrap:wrap}}
+/* Optional FT-450 CAT toolbar in configuration drawer */
+.js8-desktop .ft450-cat-controls{display:flex;align-items:end;flex-wrap:wrap;gap:8px;padding:12px}
+.js8-desktop .ft450-cat-controls>p{width:100%;margin:0 0 4px;font-size:11px;color:#b4c4d5}
+.js8-desktop .ft450-cat-controls>label{min-width:120px;flex:1}
+.js8-desktop .ft450-cat-controls>label select{width:100%;padding:7px}
+.js8-desktop .ft450-cat-controls>button{font-size:11px;padding:8px 10px;border-radius:3px}
+.js8-desktop #ftCatState{width:100%;font-size:11px;color:#b4d9ef;padding:5px}
