@@ -40,3 +40,11 @@
 .js8-desktop .ft450-cat-controls>label select{width:100%;padding:7px}
 .js8-desktop .ft450-cat-controls>button{font-size:11px;padding:8px 10px;border-radius:3px}
 .js8-desktop #ftCatState{width:100%;font-size:11px;color:#b4d9ef;padding:5px}
+
+/* JS8Web 0.9 browser-only offline preparation */
+.js8-desktop .offline-controls{margin-top:14px;padding:10px;border:1px solid #3f536e;border-radius:4px;background:#101e2f}
+.js8-desktop .offline-controls h3{color:#b6dffd;margin:0 0 6px;font-size:13px}
+.js8-desktop .offline-controls p{color:#b8c8d9;font-size:11px;line-height:1.5}
+.js8-desktop .offline-controls .row{align-items:center;gap:8px}
+.js8-desktop .offline-controls button{padding:7px 10px;font-size:11px}
+.js8-desktop #offlineProgress{font-size:11px;line-height:1.4;color:#b0d8ef;flex:1;min-width:180px}
