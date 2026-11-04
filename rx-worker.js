@@ -19,16 +19,16 @@ function search(a,m,low,high){let nfft=1;while(nfft<m.sps)nfft*=2;const hzbin=12
       if(score<.22)continue;
       let candidate={q:score,start,freq:base},index=top.findIndex(x=>Math.abs(x.freq-base)<step*2.2&&Math.abs(x.start-start)<Math.max(hop*2,500));
       if(index>=0){if(score>top[index].q)top[index]=candidate;}else top.push(candidate);
-      if(top.length>24){top.sort((a,b)=>b.q-a.q);top.length=14;}
+      if(top.length>40){top.sort((a,b)=>b.q-a.q);top.length=26;}
     }
   }
-  top.sort((a,b)=>b.q-a.q);return {candidates:top.slice(0,12),best:highest,peakFreq};
+  top.sort((a,b)=>b.q-a.q);return {candidates:top.slice(0,20),best:highest,peakFreq};
 }
 function refine(a,c,m){let best={q:-1,start:c.start,freq:c.freq},timeStep=Math.max(1,Math.round(.025*12000));for(let dt=-4;dt<=4;dt++){let start=c.start+dt*timeStep;if(start<0||start+79*m.sps>a.length)continue;for(let df=-4;df<=4;df+=2){const freq=c.freq+df,q=fineScore(a,start,freq,m);if(q>best.q)best={q,start,freq};}}return best;}
 function demod(a,sync,m){let scores=new Float32Array(174),step=12000/m.sps;for(let i=0;i<58;i++){let sym=i<29?7+i:43+(i-29),p=sync.start+sym*m.sps,pow=[];for(let t=0;t<8;t++)pow.push(energy(a,p,m.sps,sync.freq+t*step));const avg=pow.reduce((x,y)=>x+y,0)/8+1e-12;for(let k=0;k<3;k++){let hi=0,lo=0;for(let t=0;t<8;t++)if(t&(1<<(2-k)))hi=Math.max(hi,pow[t]);else lo=Math.max(lo,pow[t]);scores[(i<29?i*3:87+(i-29)*3)+k]=Math.max(-8,Math.min(8,1.5*(hi-lo)/avg));}}return scores;}
 function createAudio(tones,m,freq){let a=new Float32Array(m.period*12000),phase=0,start=(m.delay*12000)|0;for(let i=0;i<tones.length*m.sps;i++){let tone=tones[Math.floor(i/m.sps)],hz=freq+tone*12000/m.sps;phase+=2*Math.PI*hz/12000;if(phase>=2*Math.PI)phase-=2*Math.PI;let fade=Math.min(1,i/(m.sps*.12),(tones.length*m.sps-i)/(m.sps*.12));a[start+i]=.7*Math.sin(phase)*Math.max(0,fade);}return a;}
 async function decode(msg){let e=await engine(),m=MODES[msg.mode];if(!m)throw Error('Unbekannter Submode');let a=msg.synthetic?createAudio(msg.tones,m,msg.freq):resample(msg.samples,msg.sr);if(a.length<79*m.sps)throw Error('Nicht genügend Samples für 79 Symbole');
   let auto=msg.auto!==false,focus=Number(msg.freq)||1500,lo=auto?300:Math.max(300,focus-30),hi=auto?3000:Math.min(3000,focus+30+7*12000/m.sps);let scan=search(a,m,lo,hi),found=[];
-  for(let c of scan.candidates){let s=refine(a,c,m);if(s.q<.4)continue;if(found.some(x=>Math.abs(x.frequency-s.freq)<12&&Math.abs(x.start-s.start)<m.sps))continue;new Float32Array(e.memory.buffer,e.js8_llr_ptr(),174).set(demod(a,s,m));let iters=e.js8_decode();if(iters<0)continue;let raw=new Uint8Array(e.memory.buffer,e.js8_decoded_ptr(),12);found.push({text:String.fromCharCode(...raw),type:e.js8_type(),iters,sync:s.q,frequency:s.freq,dt:s.start/12000-m.delay,start:s.start});if(found.length>=8)break;}
+  for(let c of scan.candidates){let s=refine(a,c,m);if(s.q<.4)continue;if(found.some(x=>Math.abs(x.frequency-s.freq)<12&&Math.abs(x.start-s.start)<m.sps))continue;new Float32Array(e.memory.buffer,e.js8_llr_ptr(),174).set(demod(a,s,m));let iters=e.js8_decode();if(iters<0)continue;let raw=new Uint8Array(e.memory.buffer,e.js8_decoded_ptr(),12);found.push({text:String.fromCharCode(...raw),type:e.js8_type(),iters,sync:s.q,frequency:s.freq,dt:s.start/12000-m.delay,start:s.start});if(found.length>=14)break;}
   found.sort((a,b)=>b.sync-a.sync);if(found.length)return{ok:true,...found[0],results:found,checked:scan.candidates.length,scanPeak:scan.peakFreq};return{ok:false,reason:'Kein CRC/LDPC-gültiger JS8-Frame ('+scan.candidates.length+' Sync-Kandidaten)',q:scan.best,scanPeak:scan.peakFreq,checked:scan.candidates.length};}
 self.onmessage=async ev=>{try{self.postMessage({id:ev.data.id,...await decode(ev.data)});}catch(ex){self.postMessage({id:ev.data.id,ok:false,reason:String(ex.message||ex)});}};
