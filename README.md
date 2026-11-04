@@ -1,4 +1,4 @@
-# JS8Web LAB 0.1 – GitHub-Pages-Webapp
+# JS8Web LAB 0.3 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
@@ -8,31 +8,31 @@ Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solch
 
 | Feature | Status |
 |---|---|
-| GitHub Pages: HTML/CSS/JS/WASM ohne Server/Actions | Ja |
+| GitHub Pages: HTML/CSS/JS/WASM ohne eigenen Backendserver | Ja, automatischer Actions-Deploy |
 | Echte JS8-Modulation: 79 Symbole / 8-FSK / Costas | Ja, im Codec-Loopback geprüft |
 | CRC12 / LDPC(174,87) / Frame-Typ 0–7 | Ja, geprüft |
 | NORMAL 15s, FAST 10s, TURBO 6s, SLOW 30s | Ja, Audioloopback geprüft |
 | RAW 12-Zeichen-Frames | Ja, mit Originalalphabet |
 | Audiowiedergabe und UTC-Slot-Zeiten | Implementiert, HF-Hardwaretest offen |
 | Empfang über Mikrofon | Implementiert, benötigt Praxistest |
-| Einfrequenz-Goertzel-Decoder (selbst erzeugte Testframes) | Ja, 4 Modi geprüft |
+| Automatischer Costas-Breitbandscan 300–3000 Hz | Implementiert und mit synthetischen JS8-WAV-Signalen getestet |
 | Wasserfall und WAV-Import/Export | Implementiert |
 | CSV-Logging | Implementiert |
 | PTT über serielle RTS/DTR-Leitung | Browserseitig implementiert, Hardwaretest offen |
-| Vollständiges JS8Call-Text-/Nachrichtenprotokoll, CQ/HB, Directed Message, Inbox und Store-and-forward | **Nein** |
+| JS8Call-Protokoll: CQ, HB, gerichtete Kurzbefehle (Einzelrahmen) | **Teilport**; Sender und Parser ergänzt |\n| Vollständiges JS8Call-Textprotokoll, Inbox und Store-and-forward | **Nein** |
 | Vollständiger Softdecoder mit zeit-/frequenzbreitem Suchraster wie im Original | **Nein** |
 | Hamlib/CAT-Transceiversteuerung, USB-PTT für alle Geräte | **Nein** |
 | Browser-Unterstützung ohne WebSerial | RX/TX-Audio möglich; keine serielle PTT |
 
 **Wichtiger Hinweis:** Ein korrekt erzeugter JS8-Transportframe ist noch **keine reguläre JS8Call-Freitextnachricht**. Das Original verwendet zusätzlich `varicode.cpp` für Kompression, Rufzeichen, Frame-Arten, Directed-Commands, Checksummen und Verkettung. Auf Sendung mit dieser Lab-Version würde ein normaler JS8Call-Client den Dateninhalt üblicherweise nicht als lesbare QSO-Nachricht darstellen. Bitte nur in einer geeigneten Testumgebung oder ausdrücklich als Labortest benutzen.
 
-Der Empfänger sucht ausschließlich **eine manuell ausgewählte Audiofrequenz** und prüft die empfangenen Bits mit dem originalen CRC12 sowie einem vereinfachten Min-Sum-LDPC-Decoder. Er ist nicht vergleichbar mit dem vollwertigen Mehrsignal-/Schwachsignal-Decoder von JS8Call.
+Der Empfänger sucht standardmäßig **300–3000 Hz** nach Costas-Synchronisationen, verfeinert Zeit und Tonfrequenz und versucht bis zu acht CRC12/LDPC-gültige JS8-Frames pro Suchfenster. Alternativ kann ein enger Bereich um die ausgewählte Audiofrequenz benutzt werden. Die Webapp erkennt CQ/HB und eine begrenzte Menge gerichteter Kurzbefehle. Dies ist **kein vollwertiger schwachsignaltauglicher JS8Call-Decoder**; realer HF-Empfang wurde nicht verifiziert.
 
 ## GitHub Pages – automatische Bereitstellung
 
 Das Repository https://github.com/DE8MSH/js8call_webapp enthält die Quelldateien.
 Der Workflow `.github/workflows/deploy.yml` baut `js8-core.wasm` aus `js8-core.c`,
-führt die 12 Selbsttests aus und veröffentlicht das Ergebnis via GitHub Pages.
+führt die bisherigen und die neuen Breitband-Empfangstests aus und veröffentlicht das Ergebnis via GitHub Pages.
 Der erzeugte WASM-Codec ist Bestandteil des Pages-Deployments und wird zusätzlich als herunterladbares Build-Artefakt gespeichert.
 Es wird kein externer Backendserver benötigt.
 
@@ -85,7 +85,7 @@ Ursprüngliche Referenzen: [`JS8.cpp`](https://github.com/js8call/js8call/blob/m
 * 12 kHz DSP, Phasenkontinuität bei 8-FSK-Tonsymbolen, sanfter Ein- und Ausblendrand.
 * Soundkartenausgang wird als TX-Audio verwendet; das Funkgerät muss korrekt auf USB eingestellt und in passender Weise angeschlossen sein.
 * WebSerial kann RTS oder DTR setzen. Nicht jedes TRX und nicht jede USB-Schnittstelle unterstützt diese PTT-Methode. Kein umfassendes Hamlib, keine garantierte CAT-Kompatibilität und keine automatische Frequenzeinstellung.
-* 12 bit CRC im Transportframe schützt die Daten; `js8-core.c` verwendet den GPLv3-Quellcode als Referenz, ersetzt aber nicht die gesamte Signalverarbeitung des Originals.
+* Der Empfänger puffert Mikrofonsamples zeitbezogen über UTC-Slotgrenzen hinweg, damit Puffergrenzen nicht den Anfang einer Aussendung abschneiden. Der Wasserfall erlaubt durch Klicken die Wahl einer manuellen Frequenz; Auto-RX sucht unabhängig davon breitbandig.\n* 12 bit CRC im Transportframe schützt die Daten; `js8-core.c` verwendet den GPLv3-Quellcode als Referenz, ersetzt aber nicht die gesamte Signalverarbeitung des Originals.
 * UTC-Slot und Laptop-Zeit sollten z. B. mit `systemd-timesyncd` synchronisiert sein. Timing und TX-Audio sind im Browser nicht hart echtzeitfähig.
 
 ## Sicherheit und Lizenz
@@ -97,3 +97,11 @@ Nur mit gültiger Amateurfunkzulassung und innerhalb der zulässigen Frequenzen 
 ## Entwicklungsbedarf für einen vollständigen Webport
 
 Für eine echte JS8Call-kompatible Webanwendung müssen mindestens `varicode.cpp`, die JS8Call-Nachrichtenverwaltung, der vollständige weaksignal-Decoder und weitere Funktionen portiert werden. Qt 6 WebAssembly allein beseitigt nicht die Probleme mit Hamlib, nativer serieller Kommunikation, Audio-Scheduling, Threads, WebAssembly-Speicher und dem Browser-Sandbox-Modell. Solange diese fehlen, ist dieses Paket als **technischer Prototyp** und nicht als vollständiger JS8Call-Client zu verwenden.
+
+## Stand 0.3 – RX-Korrektur vom 4. November 2026
+
+Der vorherige Worker suchte nur ±8 Hz und wenige Zehntelsekunden am Slot-Beginn und erkannte deshalb viele empfangene Stationen nicht. Der neue Worker sucht das komplette 300–3000-Hz-Audioband mittels FFT/Costas-Korrelation, verfeinert Kandidaten über Goertzel und wendet anschließend den bestehenden LDPC-/CRC-Decoder an. Auch Mikrofon-Pufferung und WAV-Suche wurden an überlappende Slots angepasst.
+
+Reproduzierbare Tests: `node tests/test.mjs` und `node tests/rx-scan.mjs` (bei vorhandenem `js8-core.wasm`). Die neuen Tests prüfen Frequenzen von 650 bis 2550 Hz, bis zu 1,1 s Zeitversatz, 12/48 kHz PCM, simuliertes Rauschen, zwei gleichzeitige Signale sowie die Unterdrückung eines Rauschfensters ohne Aussendung. **Diese Tests sind keine reale Funkvalidierung und keine Garantie für die Dekodierung sehr schwacher Stationen.**
+
+Bei Problemen in der Webseite: Auto-RX aktiviert lassen, Modus auf NORMAL und USB-Dial-Frequenz am Transceiver korrekt einstellen, HF-Audio-Signal über das gewählte Mikrofon/Soundkarten-Interface einspeisen, unnötige Echo-/Rauschfilter des Systems deaktivieren und die UTC-Uhr überprüfen. Als erste Gegenprobe 'Test-WAV erzeugen' und dieselbe Datei unter 'WAV-Datei decodieren' einlesen.
