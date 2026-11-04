@@ -37,11 +37,13 @@ vm.runInNewContext(source,{self,caches,URL,Promise,fetch:async request=>{
 const install=[];
 events.get('install')({waitUntil:p=>install.push(p)});
 await Promise.all(install);
-const base=stores.get('js8web-static-v10');
+const base=stores.get('js8web-static-v11');
 assert.ok(base.size>=15,'core should be precached');
 assert.ok(base.has(scope+'js8-core.wasm'),'WASM is required for offline decoding');
 assert.ok(base.has(scope+'tx-slots.js'),'safe TX is required offline');
 assert.ok(base.has(scope+'live-rx.js'),'multi-mode live RX is required offline');
+assert.ok(base.has(scope+'original-ui.js'),'Original UI control layer must work offline');
+assert.ok(base.has(scope+'original-ui.css'),'Original UI styling must work offline');
 assert.ok(base.has(scope+'offline.js'),'offline UI must be available');
 async function request(path){
  let responded,extras=[];
@@ -64,5 +66,5 @@ assert.match(await (await request('jsc-dict/chunk0.json')).text(),/served/);
 const active=[];
 events.get('activate')({waitUntil:p=>active.push(p)});
 await Promise.all(active);
-assert.equal(stores.has('js8web-static-v10'),true);
+assert.equal(stores.has('js8web-static-v11'),true);
 console.log('Offline SW tests: scoped cache, wasm precache, fallback, JSC dictionary cache-on-use PASS');
