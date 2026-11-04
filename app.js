@@ -190,14 +190,17 @@ $('makeBeacon').onclick=()=>{try{protocolPrepare(makeHeartbeat($('call').value,$
 $('makeDirected').onclick=()=>{try{protocolPrepare(makeDirected($('call').value,$('targetCall').value,$('directCmd').value));}catch(e){status('Directed: '+e.message);}};
 let armedPttLine=null;
 async function pttActive(state){
- if(!serial)return;
+ if(!serial){
+  if(state&&$('pttLine').value!=='none')throw Error('PTT '+$('pttLine').value.toUpperCase()+' gewählt, aber kein serieller Port verbunden');
+  return;
+ }
  const line=state?$('pttLine').value:(armedPttLine||$('pttLine').value);
  if(line==='none')return;
  if(state)armedPttLine=line;
  try{await serial.setSignals(line==='rts'?{requestToSend:state}:{dataTerminalReady:state});}
  finally{if(!state)armedPttLine=null;}
 }
-$('serialConnect').onclick=async()=>{try{if(!navigator.serial)throw Error('WebSerial nur in kompatiblen Chromium-Browsern über HTTPS verfügbar');serial=await navigator.serial.requestPort();await serial.open({baudRate:9600});await serial.setSignals({requestToSend:false,dataTerminalReady:false});$('serialStatus').textContent='Port verbunden';$('serialConnect').disabled=true;$('serialDisconnect').disabled=false;status('WebSerial-Port verbunden – RTS/DTR nur mit korrekter PTT-Verdrahtung nutzen.');}catch(e){serial=null;status('WebSerial: '+e.message)}};
+$('serialConnect').onclick=async()=>{try{if(!navigator.serial)throw Error('WebSerial nur in kompatiblen Chromium-Browsern über HTTPS verfügbar');serial=await navigator.serial.requestPort();await serial.open({baudRate:9600});await serial.setSignals({requestToSend:false,dataTerminalReady:false});$('serialStatus').textContent='Port verbunden';$('serialConnect').disabled=true;$('serialDisconnect').disabled=false;status('WebSerial-Port verbunden – RTS/DTR nur mit korrekter PTT-Verdrahtung nutzen.');}catch(e){try{await serial?.close();}catch{}serial=null;status('WebSerial: '+e.message)}};
 $('serialDisconnect').onclick=async()=>{
  try{
   if(txController.busy)await txController.cancel();
@@ -243,7 +246,7 @@ $('tx').onclick=async()=>{
   return false;
  }finally{
   transmitting=false;txSource=null;
-  $('pttLine').disabled=false;$('txDevice').disabled=false;
+  $('pttLine').disabled=false;$('pttLead').disabled=false;$('txDevice').disabled=false;
   $('cancel').disabled=true;$('tx').disabled=!prepared||!$('txconfirm').checked;
  }
 };
@@ -267,7 +270,7 @@ init();
 let textTxPacket=null,textTxIndex=0,textTxRunning=false,textTxAborted=false;
 let textTxFingerprint='';
 function txQueueFingerprint(){
-  return [$('mode').value,$('audioFreq').value,$('call').value,$('textRecipient')?.value||'', $('textKind')?.value||'plain',$('txDevice')?.value||''].join('|');
+  return [$('mode').value,$('audioFreq').value,$('call').value,$('textRecipient')?.value||'', $('textKind')?.value||'plain',$('txDevice')?.value||'',$('pttLine')?.value||'none',$('pttLead')?.value||'350'].join('|');
 }
 function currentTxQueueValid(){return txQueueFingerprint()===textTxFingerprint;}
 function textTxEvent(state,extra={}){window.dispatchEvent(new CustomEvent('js8:txqueue',{detail:{state,...extra}}));}
