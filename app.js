@@ -151,7 +151,40 @@ async function getAudio(){
  return ctx;
 }
 function flatten(list){let n=list.reduce((s,x)=>s+x.length,0),out=new Float32Array(n),p=0;for(const c of list){out.set(c,p);p+=c.length;}return out;}
-function spectrogram(){if(!analyser)return;const c=$('spectrum'),g=c.getContext('2d');const db=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(db);g.drawImage(c,0,1);const strip=g.createImageData(c.width,1),hzPerBin=ctx.sampleRate/analyser.fftSize;for(let x=0;x<c.width;x++){const hz=300+x/c.width*2700,bin=Math.floor(hz/hzPerBin),p=db[Math.max(0,Math.min(db.length-1,bin))]/255,v=Math.max(0,Math.min(255,Math.floor((p-.12)*400))),q=x*4;strip.data[q]=Math.max(0,Math.min(255,v*.9));strip.data[q+1]=Math.max(0,Math.min(255,v*1.1));strip.data[q+2]=Math.max(0,Math.min(255,v*1.65));strip.data[q+3]=255;}g.putImageData(strip,0,0);let x=(freq()-300)/2700*c.width;g.fillStyle='#f9ae5a';g.fillRect(x,0,2,2);}
+function spectrogram(){
+ if(!analyser)return;
+ const canvas=$('spectrum'),g=canvas.getContext('2d'),data=new Uint8Array(analyser.frequencyBinCount);
+ const avg=Math.max(0,Math.min(.95,Number($('qtWfAvg')?.value??38)/100));
+ if(Number.isFinite(avg))analyser.smoothingTimeConstant=avg;
+ analyser.getByteFrequencyData(data);
+ g.drawImage(canvas,0,1);
+ const strip=g.createImageData(canvas.width,1);
+ const hzPerBin=ctx.sampleRate/analyser.fftSize;
+ const gain=Math.max(.2,Math.min(2,Number($('qtWfGain')?.value??100)/100));
+ const zero=Math.max(-40,Math.min(40,Number($('qtWfZero')?.value??0)))/300;
+ const palette=$('qtWfPalette')?.value||'classic';
+ for(let x=0;x<canvas.width;x++){
+  const hz=300+x/canvas.width*2700,bin=Math.floor(hz/hzPerBin);
+  const p=data[Math.max(0,Math.min(data.length-1,bin))]/255;
+  const v=Math.max(0,Math.min(255,Math.floor((p-.12+zero)*400*gain)));
+  const q=x*4;
+  if(palette==='gray'){strip.data[q]=v;strip.data[q+1]=v;strip.data[q+2]=v;}
+  else if(palette==='heat'){
+   strip.data[q]=Math.max(0,Math.min(255,v*2));
+   strip.data[q+1]=Math.max(0,Math.min(255,(v-65)*1.6));
+   strip.data[q+2]=Math.max(0,Math.min(255,(v-155)*2));
+  }else{
+   strip.data[q]=Math.max(0,Math.min(255,v*.9));
+   strip.data[q+1]=Math.max(0,Math.min(255,v*1.1));
+   strip.data[q+2]=Math.max(0,Math.min(255,v*1.65));
+  }
+  strip.data[q+3]=255;
+ }
+ g.putImageData(strip,0,0);
+ const x=(freq()-300)/2700*canvas.width;
+ g.fillStyle='#f9ae5a';g.fillRect(x,0,2,2);
+}
+
 let captureStartMs=0,captureFrames=0,pcmBlocks=[],activeMode='normal',activeModes=['normal'];
 let liveWorkers=[],liveFound=0;
 const livePlanner=new LiveSlotPlanner();
