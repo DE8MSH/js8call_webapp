@@ -38,6 +38,7 @@ jobs:
           node --check app.js
           node --check ui-layout.js
           node --check rx-worker.js
+          node --check live-rx.js
           node --check rx-enhance.js
           node --check protocol.js
           node --check jsc.js
@@ -50,6 +51,7 @@ jobs:
           node --check desktop-extra.js
           node tests/test.mjs
           node tests/rx-scan.mjs
+          node tests/live-rx.mjs
           node tests/rx-enhance.mjs
           node tests/protocol-rx.mjs
           node tests/jsc.mjs
