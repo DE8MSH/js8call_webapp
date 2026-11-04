@@ -18,7 +18,7 @@ for(const [frame,expected] of [
 assert.equal(extractJscPayload('0123456789AB',0),null);n++;
 // Dictionary word #0 is "E". Build 72bit transport-FLAGGED frame from one word.
 const alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-+';
-const one='00001'+'0'+'1'.repeat(66); // one terminal JSC codeword + padding.
+const one='00000'+'0'+'1'.repeat(66); // one terminal JSC codeword + padding.
 assert.equal(one.length,72);
 let raw='';for(let i=0;i<72;i+=6)raw+=alphabet[parseInt(one.slice(i,i+6),2)];
 assert.equal((await decodeJscFrame(raw,4,word))?.display,'E');n++;
