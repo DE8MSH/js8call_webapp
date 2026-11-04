@@ -1,6 +1,6 @@
 import {makeHeartbeat,makeDirected,parseFrame} from './protocol.js';
 import {decodeJscFrame,MessageAssembler} from './jsc.js';
-import {prepareJscText} from './jsc-tx.js';
+import {prepareMessagePlan,MessageSessionTracker} from './js8-messages.js';
 /* JS8Web LAB browser controller, GPL-3.0. See README.md for precise limitations. */
 const $=id=>document.getElementById(id);
 const MODES={normal:{sps:1920,period:15,delay:.5,cos:0},fast:{sps:1200,period:10,delay:.2,cos:1},turbo:{sps:600,period:6,delay:.1,cos:1},slow:{sps:3840,period:30,delay:.5,cos:1}};
@@ -22,6 +22,11 @@ $('downloadTest').onclick=()=>{try{const p=make();download(wavBytes(audioSamples
 function rxDecode(payload){return new Promise(resolve=>{const id=++seq;pending.set(id,resolve);worker.postMessage({id,...payload},payload.samples?[payload.samples.buffer]:[]);});}
 const seenFrames=new Set();
 const textAssembler=new MessageAssembler();
+const conversationTracker=new MessageSessionTracker();
+window.addEventListener('js8:frame',event=>{
+  const message=conversationTracker.accept(event.detail);
+  if(message)window.dispatchEvent(new CustomEvent('js8:conversation',{detail:message}));
+});
 function row(result,origin,meta={}){
  if(!result.ok){status(origin+': '+result.reason+(Number.isFinite(result.q)?' · Sync '+result.q.toFixed(2):'')+(Number.isFinite(result.scanPeak)?' · stärkster Kandidat '+result.scanPeak.toFixed(0)+' Hz':''));return;}
  let frames=result.results?.length?result.results:[result],added=0;
@@ -156,6 +161,11 @@ init();
 /* JSC text TX queue: uses the existing WebAssembly transport coder and
  * per-slot TX audio. Operator must explicitly approve every queue run. */
 let textTxPacket=null,textTxIndex=0,textTxRunning=false,textTxAborted=false;
+let textTxFingerprint='';
+function txQueueFingerprint(){
+  return [$('mode').value,$('audioFreq').value,$('call').value,$('textRecipient')?.value||'', $('textKind')?.value||'plain'].join('|');
+}
+function currentTxQueueValid(){return txQueueFingerprint()===textTxFingerprint;}
 function textTxEvent(state,extra={}){window.dispatchEvent(new CustomEvent('js8:txqueue',{detail:{state,...extra}}));}
 window.addEventListener('js8:prepare-text',async({detail})=>{
   textTxPacket=null;textTxRunning=false;textTxAborted=false;
@@ -164,9 +174,10 @@ window.addEventListener('js8:prepare-text',async({detail})=>{
     const from=($('call').value||'').trim().toUpperCase();
     const to=($('textRecipient')?.value||'@ALLCALL').trim().toUpperCase();
     if(!/^[A-Z0-9/]{3,18}$/.test(from))throw Error('Bitte ein gültiges eigenes Rufzeichen eintragen.');
-    const prefix=original.toUpperCase().startsWith(from+':')?'':from+': '+(to!=='@ALLCALL'?to+' ':'');
-    const packet=await prepareJscText(prefix+original,$('mode').value);
+    const kind=$('textKind')?.value||'plain';
+    const packet=await prepareMessagePlan({from,to,text:original,mode:$('mode').value,kind});
     textTxPacket=packet;textTxIndex=0;
+    textTxFingerprint=txQueueFingerprint();
     for(let type=0;type<8;type++)if(![...$('type').options].some(o=>Number(o.value)===type)){
       const option=new Option('Transporttyp '+type,String(type));$('type').append(option);
     }
@@ -176,6 +187,7 @@ window.addEventListener('js8:prepare-text',async({detail})=>{
 });
 async function sendTextFrame(){
   if(textTxAborted||!textTxRunning||!textTxPacket)return;
+  if(!currentTxQueueValid()){textTxRunning=false;textTxEvent('error',{error:'TX-Einstellungen seit Vorbereitung geändert. Bitte erneut vorbereiten.'});return;}
   const f=textTxPacket.frames[textTxIndex];
   if(!f){textTxRunning=false;textTxEvent('complete',{total:textTxPacket.frames.length});return;}
   $('message').value=f.frame;$('type').value=String(f.type);prepare();
@@ -193,6 +205,7 @@ async function sendTextFrame(){
 }
 window.addEventListener('js8:send-queue',()=>{
   if(!textTxPacket||textTxRunning)return;
+  if(!currentTxQueueValid()){textTxEvent('error',{error:'TX-Einstellungen seit Vorbereitung geändert. Bitte erneut vorbereiten.'});return;}
   if(!$('txconfirm').checked){textTxEvent('error',{error:'TX-Freigabe fehlt'});return;}
   textTxRunning=true;textTxAborted=false;textTxIndex=0;
   sendTextFrame().catch(e=>{textTxRunning=false;textTxEvent('error',{error:e.message});});
