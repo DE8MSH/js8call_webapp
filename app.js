@@ -188,13 +188,29 @@ function protocolPrepare(packet){
 }
 $('makeBeacon').onclick=()=>{try{protocolPrepare(makeHeartbeat($('call').value,$('locator').value,$('beaconKind').value));}catch(e){status('CQ/HB: '+e.message);}};
 $('makeDirected').onclick=()=>{try{protocolPrepare(makeDirected($('call').value,$('targetCall').value,$('directCmd').value));}catch(e){status('Directed: '+e.message);}};
-function pttActive(state){if(!serial||$('pttLine').value==='none')return Promise.resolve();return serial.setSignals($('pttLine').value==='rts'?{requestToSend:state}:{dataTerminalReady:state});}
-$('serialConnect').onclick=async()=>{try{if(!navigator.serial)throw Error('WebSerial nur in kompatiblen Chromium-Browsern über HTTPS verfügbar');serial=await navigator.serial.requestPort();await serial.open({baudRate:9600});$('serialStatus').textContent='Port verbunden';$('serialConnect').disabled=true;$('serialDisconnect').disabled=false;status('WebSerial-Port verbunden – RTS/DTR nur mit korrekter PTT-Verdrahtung nutzen.');}catch(e){serial=null;status('WebSerial: '+e.message)}};
-$('serialDisconnect').onclick=async()=>{try{await pttActive(false);await serial?.close();}catch(e){status(e.message);}finally{serial=null;$('serialStatus').textContent='Nicht verbunden';$('serialConnect').disabled=false;$('serialDisconnect').disabled=true;}};
+let armedPttLine=null;
+async function pttActive(state){
+ if(!serial)return;
+ const line=state?$('pttLine').value:(armedPttLine||$('pttLine').value);
+ if(line==='none')return;
+ if(state)armedPttLine=line;
+ try{await serial.setSignals(line==='rts'?{requestToSend:state}:{dataTerminalReady:state});}
+ finally{if(!state)armedPttLine=null;}
+}
+$('serialConnect').onclick=async()=>{try{if(!navigator.serial)throw Error('WebSerial nur in kompatiblen Chromium-Browsern über HTTPS verfügbar');serial=await navigator.serial.requestPort();await serial.open({baudRate:9600});await serial.setSignals({requestToSend:false,dataTerminalReady:false});$('serialStatus').textContent='Port verbunden';$('serialConnect').disabled=true;$('serialDisconnect').disabled=false;status('WebSerial-Port verbunden – RTS/DTR nur mit korrekter PTT-Verdrahtung nutzen.');}catch(e){serial=null;status('WebSerial: '+e.message)}};
+$('serialDisconnect').onclick=async()=>{
+ try{
+  if(txController.busy)await txController.cancel();
+  await pttActive(false);
+  await serial?.close();
+ }catch(e){status('PTT/Seriell trennen: '+e.message);}
+ finally{serial=null;armedPttLine=null;$('serialStatus').textContent='Nicht verbunden';$('serialConnect').disabled=false;$('serialDisconnect').disabled=true;}
+};
 let transmitting=false;
 const txController=new SlotTransmitter({
   ptt:state=>pttActive(state),
   status:event=>{
+    window.dispatchEvent(new CustomEvent('js8:txstate',{detail:event}));
     if(event.state==='armed')status('TX vorbereitet für '+new Date(event.utcMs).toISOString().slice(11,19)+' UTC · PTT vor dem Audio');
     else if(event.state==='onair')status('TX-Audio aktiv · Slot '+new Date(event.utcMs).toISOString().slice(11,19)+' UTC');
     else if(event.state==='ptt-release-error')status('PTT-Freigabe fehlgeschlagen: '+event.error+' · Funkgerät sofort prüfen!');
@@ -227,6 +243,7 @@ $('tx').onclick=async()=>{
   return false;
  }finally{
   transmitting=false;txSource=null;
+  $('pttLine').disabled=false;$('txDevice').disabled=false;
   $('cancel').disabled=true;$('tx').disabled=!prepared||!$('txconfirm').checked;
  }
 };
@@ -239,9 +256,6 @@ $('cancel').onclick=async()=>{
 $('txconfirm').addEventListener('change',()=>{
   if(!$('txconfirm').checked&&txController.busy)$('cancel').click();
 });
-$('serialDisconnect').addEventListener('click',()=>{
-  if(txController.busy)$('cancel').click();
-},true);
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden&&txController.busy)$('cancel').click();
 });
