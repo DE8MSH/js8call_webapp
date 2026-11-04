@@ -210,7 +210,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
   $('stationFilter').addEventListener('input',paintCalls);
   $('onlyCQ').addEventListener('change',paintCalls);
   setInterval(paintCalls,15000);
-  const prefIds=['call','locator','band','mode','audioFreq','offset','scanAuto','enhancedRx'];
+  const prefIds=['call','locator','band','mode','audioFreq','offset','pttLead','scanAuto','enhancedRx'];
   function saveSettings(){
     const prefs={};for(const id of prefIds){const v=$(id);if(v)prefs[id]=v.type==='checkbox'?v.checked:v.value;}
     prefs.showBand=!bandPane.classList.contains('pane-hidden');
