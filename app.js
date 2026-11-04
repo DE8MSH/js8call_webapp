@@ -1,4 +1,5 @@
 import {makeHeartbeat,makeDirected,parseFrame} from './protocol.js';
+import {decodeJscFrame,MessageAssembler} from './jsc.js';
 /* JS8Web LAB browser controller, GPL-3.0. See README.md for precise limitations. */
 const $=id=>document.getElementById(id);
 const MODES={normal:{sps:1920,period:15,delay:.5,cos:0},fast:{sps:1200,period:10,delay:.2,cos:1},turbo:{sps:600,period:6,delay:.1,cos:1},slow:{sps:3840,period:30,delay:.5,cos:1}};
@@ -19,6 +20,7 @@ function download(blob,name){const a=document.createElement('a'),url=URL.createO
 $('downloadTest').onclick=()=>{try{const p=make();download(wavBytes(audioSamples(p.tones,mode(),p.freq,12000),12000),`js8web-${p.mode}-${p.text}.wav`);status('Vollständige JS8-Testrahmen-WAV erzeugt.');}catch(e){status(e.message)}};
 function rxDecode(payload){return new Promise(resolve=>{const id=++seq;pending.set(id,resolve);worker.postMessage({id,...payload},payload.samples?[payload.samples.buffer]:[]);});}
 const seenFrames=new Set();
+const textAssembler=new MessageAssembler();
 function row(result,origin,meta={}){
  if(!result.ok){status(origin+': '+result.reason+(Number.isFinite(result.q)?' · Sync '+result.q.toFixed(2):'')+(Number.isFinite(result.scanPeak)?' · stärkster Kandidat '+result.scanPeak.toFixed(0)+' Hz':''));return;}
  let frames=result.results?.length?result.results:[result],added=0;
@@ -27,7 +29,7 @@ function row(result,origin,meta={}){
   const key=Math.round(ms/2000)+'|'+Math.round(f.frequency/8)+'|'+f.text;
   if(seenFrames.has(key))continue;
   seenFrames.add(key);if(seenFrames.size>500){seenFrames.delete(seenFrames.values().next().value);}
-  let parsed;try{parsed=parseFrame(f.text);}catch{parsed={display:'Unbekannt',kind:'unknown'};}
+  let parsed;try{parsed=parseFrame(f.text,f.type);}catch{parsed={display:'Unbekannt',kind:'unknown'};}
   const item={time:new Date(ms).toISOString(),mode:meta.mode||$('mode').value,type:f.type,text:f.text,display:parsed.display,parsed,frequency:f.frequency,sync:f.sync,origin};
   logs.unshift(item);added++;
   window.dispatchEvent(new CustomEvent('js8:frame',{detail:item}));
@@ -37,6 +39,24 @@ function row(result,origin,meta={}){
   let c=document.createElement('span');c.textContent='T'+item.type+' · '+item.frequency.toFixed(0)+'Hz';
   let d=document.createElement('code');d.textContent=parsed.display+' · RAW '+item.text;r.append(a,b,c,d);list.prepend(r);
   status('RX '+origin+': '+parsed.display+' · '+item.frequency.toFixed(1)+' Hz · Sync '+item.sync.toFixed(2));
+  // Complete JS8Call JSC (s=7,c=9) dictionary decompression is lazy.
+  // A CRC-valid data frame remains recorded even if the dictionary cannot load.
+  if(parsed.kind==='data'||(f.type&4)){
+    decodeJscFrame(f.text,f.type).then(decoded=>{
+      if(!decoded?.display)return;
+      const assembled=textAssembler.add({frame:f.text,text:decoded.display,mode:item.mode,
+        frequency:item.frequency,type:f.type,time:item.time,period:MODES[item.mode]?.period||15});
+      const combined=assembled?.display||decoded.display;
+      const complete=assembled?.complete??true;
+      item.display=combined;
+      item.parsed={kind:complete?'text':'text_fragment',display:combined,command:'JSC',call:'',to:''};
+      d.textContent=combined+(complete?' [JSC]':' [JSC · Teiltext]')+' · RAW '+item.text;
+      d.classList.add('jsc-decoded');
+      window.dispatchEvent(new CustomEvent('js8:frame',{detail:{...item,parsed:item.parsed}}));
+      status('RX JSC '+origin+': '+combined.trim()+' · '+item.frequency.toFixed(1)+' Hz');
+    }).catch(err=>status('JSC-Wörterbuch: '+err.message));
+  }
+
  }
  if(added)$('framecount').textContent=logs.length+' Frames';
 }
