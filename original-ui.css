@@ -1,0 +1,67 @@
+/* JS8Web 1.1 — Qt interface fidelity layer.
+ * Based on original JS8_UI/mainwindow.ui (Qt mainSplitter, macroHorizontalWidget,
+ * controlHorizontalWidget, tableWidgetRXAll, textEditRX, callsVerticalSplitter)
+ * and WideGraph.ui (Offset / Palette / Scrolling & Averaging). */
+.js8-qt-parity .workspace.qt-split-workspace{display:grid;grid-template-columns:minmax(200px,35fr) 7px minmax(300px,40fr) 7px minmax(200px,25fr);gap:0;align-items:stretch;min-height:480px}
+.js8-qt-parity .workspace.qt-split-workspace>.band-pane,
+.js8-qt-parity .workspace.qt-split-workspace>.center-pane,
+.js8-qt-parity .workspace.qt-split-workspace>.calls-pane{min-width:0}
+.js8-qt-parity .workspace.qt-split-workspace .center-pane{gap:3px}
+.js8-qt-parity .workspace.qt-split-workspace .qt-grip{cursor:col-resize;background:#627489;border-left:2px solid #283545;border-right:2px solid #273647;position:relative;touch-action:none;outline-offset:-2px}
+.js8-qt-parity .qt-grip::after{content:"";display:block;position:absolute;left:1px;top:40%;height:42px;width:2px;background:#adbac9}
+.js8-qt-parity .qt-grip:hover,.js8-qt-parity .qt-grip:focus-visible{background:#7fb2d7;outline:2px solid #64d2f8}
+.js8-qt-parity .qt-macro-toolbar,.js8-qt-parity .qt-control-toolbar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:6px 10px;margin:0 0 4px;background:#d2d6dd;border:1px solid #667483;color:#172538;font:12px Arial,Helvetica,sans-serif;min-height:38px}
+.js8-qt-parity .qt-macro-toolbar{background:#c5ccd5;border-bottom-color:#8a929f}
+.js8-qt-parity .qt-control-toolbar{background:#e3e5e8;margin-bottom:7px}
+.js8-qt-parity .qt-bar-label{font-size:10px;font-weight:800;letter-spacing:.11em;min-width:67px;color:#415467;border-right:1px solid #86919d;padding:7px 8px 7px 0;margin-right:4px}
+.js8-qt-parity .qt-button{font:12px Arial,Helvetica,sans-serif;font-weight:600;padding:6px 12px;min-height:27px;background:linear-gradient(#f7f9fb,#d8dee5);border:1px solid #8d9cae;color:#182638;border-radius:2px;box-shadow:inset 0 1px #fff;min-width:44px}
+.js8-qt-parity .qt-button:not(:disabled):hover{background:#d3e8f8;border-color:#4889b8}
+.js8-qt-parity .qt-button:focus-visible{outline:2px solid #388dbe;outline-offset:2px}
+.js8-qt-parity .qt-button:disabled{color:#667482;background:#c7cbd0;opacity:.7;cursor:not-allowed;box-shadow:none}
+.js8-qt-parity .qt-macro-toolbar .qt-button:nth-last-child(3){background:#c7e6d2}
+.js8-qt-parity .qt-macro-toolbar .qt-button:nth-last-child(2){background:#ffded4;border-color:#be816d}
+.js8-qt-parity #qtRxToggle.qt-on{background:#c9f3d6;color:#215c32;border-color:#56936a}
+.js8-qt-parity #qtModeBadge{background:#d3e4f4;color:#1b496f}
+.js8-qt-parity #qtControlToolbar .qt-button.qt-armed{background:#fce7ac;border-color:#d3a14a;color:#68420b}
+.js8-qt-parity .qt-table-heading{display:grid;grid-template-columns:57px 39px 68px minmax(0,1fr);gap:6px;border:1px solid #75899c;border-bottom:0;background:#d5dfe8;color:#1a3048;font-size:11px}
+.js8-qt-parity .qt-table-heading .qt-col-label{padding:4px 3px;font-size:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:left;white-space:nowrap;background:transparent;border:0;box-shadow:none;font-weight:700}
+.js8-qt-parity .qt-table-heading .qt-col-label:hover{color:#1d608c;background:#c5d8eb}
+.js8-qt-parity .band-pane .log{border-top-left-radius:0;border-top-right-radius:0}
+.js8-qt-parity .qt-call-details{background:#f7f9fc;color:#203044;border:1px solid #8195a7;margin:1px 0 7px;padding:7px;max-height:215px;overflow:auto;flex:0 0 auto}
+.js8-qt-parity .qt-call-details[hidden]{display:none!important}
+.js8-qt-parity .qt-call-title{font-size:13px;font-weight:700;background:#e1e9f1;padding:4px;margin:-5px -5px 7px}
+.js8-qt-parity .qt-call-info{display:grid;grid-template-columns:82px minmax(0,1fr);row-gap:3px;column-gap:6px;margin:0;font-size:11px}
+.js8-qt-parity .qt-call-info dt{color:#526478}
+.js8-qt-parity .qt-call-info dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.js8-qt-parity .qt-call-actions{display:flex;gap:6px;margin-top:9px}
+.js8-qt-parity .qt-call-actions .qt-button{font-size:11px;min-height:23px;padding:4px 9px}
+.js8-qt-parity .qt-waterfall-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 7px;padding:7px 9px;background:#c9d2dd;color:#273647;border:1px solid #708498}
+.js8-qt-parity .qt-waterfall-controls[hidden]{display:none!important}
+.js8-qt-parity .qt-wf-section{display:flex;align-items:center;gap:7px}
+.js8-qt-parity .qt-wf-section strong{font-size:11px}
+.js8-qt-parity .qt-wf-section output{min-width:62px;text-align:center;font:11px monospace}
+.js8-qt-parity .qt-waterfall-controls label{color:#273647;font:11px Arial;gap:2px;min-width:75px;flex:0 1 115px}
+.js8-qt-parity .qt-waterfall-controls select{font-size:11px;min-height:27px;padding:4px;color:#22354a;background:#f4f8fd;border-radius:2px}
+.js8-qt-parity .qt-waterfall-controls input[type=range]{padding:0;height:24px;accent-color:#37769f}
+.js8-qt-parity .qt-waterfall-controls button{font-size:11px;padding:6px 8px;border-radius:2px;color:#203047;background:#edf2f6;border-color:#8295a9}
+.js8-qt-parity .spectrum>.heading{margin-bottom:5px}
+.js8-qt-parity .message-pane .message-history{background:#ffeaa7!important;color:#403320}
+.js8-qt-parity #textMessage{background:#fbfff9}
+.qt-macro-dialog{border:1px solid #6b7e90;border-radius:3px;box-shadow:0 24px 80px #0009;background:#f2f5f8;color:#1d3042;width:min(680px,95vw);max-height:85vh;padding:18px}
+.qt-macro-dialog::backdrop{background:#050e1ba6}
+.qt-macro-dialog h3{font-size:16px;margin:0 0 6px}
+.qt-macro-dialog .qt-note{font-size:12px;color:#58687a}
+.qt-macro-dialog .qt-saved-list{max-height:210px;overflow:auto;border:1px solid #a9b8c6}
+.qt-macro-dialog .qt-saved-item{display:grid;grid-template-columns:100px minmax(0,1fr) 78px;gap:5px;align-items:center;padding:5px;border-bottom:1px solid #d0dce5}
+.qt-macro-dialog .qt-saved-item code{font-size:11px;overflow-wrap:anywhere}
+.qt-macro-dialog .qt-macro-form{display:grid;grid-template-columns:120px minmax(0,1fr);gap:7px;margin:12px 0}
+.qt-macro-dialog .qt-macro-form textarea{grid-column:1 / -1;background:white;color:#1f2d41;min-height:72px;padding:9px;border:1px solid #b1bdca}
+.qt-macro-dialog .qt-macro-form button{grid-column:1 / -1}
+.qt-macro-dialog button{color:#192a3e;background:#e0e9f2;border-color:#93a8bd}
+@media(max-width:950px){
+ .js8-qt-parity .workspace.qt-split-workspace{grid-template-columns:1fr!important;display:grid;gap:7px;min-height:0}
+ .js8-qt-parity .workspace.qt-split-workspace>.qt-grip{display:none}
+ .js8-qt-parity .qt-call-details{max-height:245px}
+ .js8-qt-parity .qt-macro-toolbar,.js8-qt-parity .qt-control-toolbar{gap:4px;padding:5px}
+ .js8-qt-parity .qt-bar-label{min-width:100%;border:0;border-bottom:1px solid #9aabbc}
+}
