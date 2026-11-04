@@ -1,0 +1,12 @@
+{
+  "name": "JS8Web LAB – Browser JS8 Funkstation",
+  "short_name": "JS8Web",
+  "description": "Experimentelle JS8Call-Webapp mit WebAssembly, Browser-Audio und optionalem Offline-Betrieb.",
+  "lang": "de",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220"
+}
