@@ -29,7 +29,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     details.addEventListener('toggle',()=>{if(details.open)[...menubar.querySelectorAll('details')].filter(e=>e!==details).forEach(e=>e.open=false);});
     menubar.append(details);
   }
-  const version=el('span','app-version','JS8Web LAB 1.0 · RX/TX'),menutop=el('span','app-menu-separator');
+  const version=el('span','app-version','JS8Web LAB 1.1 · RX/TX'),menutop=el('span','app-menu-separator');
   menubar.append(menutop,version);
   document.body.insertBefore(menubar,header);
   const toolbar=el('section','rig-toolbar');
@@ -85,6 +85,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     selected=call;$('selectedStation').textContent='Empfänger: '+(call||'@ALLCALL');
     if(call){$('targetCall').value=call;if($('textRecipient'))$('textRecipient').value=call;const entry=callbook.get(call);selectedFreq=entry?.freq||0;}
     paintCalls();paintMessages();
+    window.dispatchEvent(new CustomEvent('js8:station-selected',{detail:{call:selected,frequency:selectedFreq}}));
   }
   function paintCalls(){
     const box=$('callActivity');box.replaceChildren();
@@ -181,7 +182,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     ptt:()=>{$('#settingsDrawer').open=true;$('#pttLine').scrollIntoView({behavior:'smooth',block:'center'});},
     diagnosis:()=>diagnosis.scrollIntoView({behavior:'smooth',block:'start'}),
     original:()=>window.open('https://github.com/js8call/js8call','_blank','noopener'),
-    help:()=>window.alert('JS8Web LAB 1.0 · Browser-Teilport. RX in vier Submodi, JSC-Freitext sowie lokale Inbox/Outbox sind verfügbar; vollständige Original-Decoder- und automatische QSO-/Routing-Funktionen fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
+    help:()=>window.alert('JS8Web LAB 1.1 · Browser-Teilport. RX in vier Submodi, JSC-Freitext sowie lokale Inbox/Outbox sind verfügbar; vollständige Original-Decoder- und automatische QSO-/Routing-Funktionen fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
     save:()=>{saveSettings();window.alert('Stations-/Anzeigeeinstellungen lokal im Browser gespeichert.');},
     auto:()=>{$('scanAuto').checked=!$('scanAuto').checked;saveSettings();},
     auto4:()=>{if($('liveAllModes').disabled){window.alert('Live-Modi erst nach RX Stop umschalten.');return;}$('liveAllModes').checked=!$('liveAllModes').checked;saveSettings();},
