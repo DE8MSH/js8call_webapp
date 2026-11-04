@@ -4,7 +4,27 @@ let core;
 const MODES={normal:{sps:1920,delay:.5,period:15,cos:0},fast:{sps:1200,delay:.2,period:10,cos:1},turbo:{sps:600,delay:.1,period:6,cos:1},slow:{sps:3840,delay:.5,period:30,cos:1}};
 const COSTAS=[[[4,2,5,6,1,3,0],[4,2,5,6,1,3,0],[4,2,5,6,1,3,0]],[[0,6,2,3,5,4,1],[1,5,0,2,3,6,4],[2,5,0,6,4,1,3]]];
 async function engine(){if(!core){let r=await fetch(new URL('./js8-core.wasm',import.meta.url));if(!r.ok)throw Error('WASM HTTP '+r.status);core=(await WebAssembly.instantiate(await r.arrayBuffer())).instance.exports;}return core;}
-function resample(a,sr){if(!Number.isFinite(sr)||sr<8000||sr>192000)throw Error('Ungültige Abtastrate');if(Math.abs(sr-12000)<.1)return a;let n=Math.floor(a.length*12000/sr),out=new Float32Array(n);for(let i=0;i<n;i++){let p=i*sr/12000,j=p|0,k=p-j;out[i]=(a[j]||0)*(1-k)+(a[j+1]||0)*k;}return out;}
+// Lowpass first at the original sample rate before 12 kHz decimation.
+function resample(a,sr){
+  if(!Number.isFinite(sr)||sr<8000||sr>192000)throw Error('Ungültige Abtastrate');
+  if(Math.abs(sr-12000)<.1)return a;
+  const ratio=sr/12000,n=Math.floor(a.length/ratio),out=new Float32Array(n);
+  if(sr<=12500){for(let i=0;i<n;i++){const p=i*ratio,j=p|0,k=p-j;out[i]=(a[j]||0)*(1-k)+(a[j+1]||0)*k;}return out;}
+  const half=24,phases=128,cutoff=3700/sr;
+  const weights=Array.from({length:phases},(_,q)=>{
+    const arr=new Float32Array(2*half+1),frac=q/phases;let sum=0;
+    for(let k=-half;k<=half;k++){const x=k-frac,z=2*cutoff*x,u=x/half;
+      const v=2*cutoff*(Math.abs(z)<1e-9?1:Math.sin(Math.PI*z)/(Math.PI*z))*(.42+.5*Math.cos(Math.PI*u)+.08*Math.cos(2*Math.PI*u));
+      arr[k+half]=v;sum+=v;
+    }
+    for(let k=0;k<arr.length;k++)arr[k]/=sum;return arr;
+  });
+  for(let i=0;i<n;i++){const p=i*ratio,j=Math.floor(p),co=weights[Math.min(phases-1,Math.round((p-j)*(phases-1)))];let value=0,denom=0;
+    for(let k=0;k<co.length;k++){const ix=j-half+k;if(ix>=0&&ix<a.length){value+=a[ix]*co[k];denom+=co[k];}}
+    out[i]=denom>.1?value/denom:value;
+  }
+  return out;
+}
 function energy(a,start,count,f){if(start<0||start+count>a.length||f<100||f>5800)return 0;const w=2*Math.PI*f/12000,c=2*Math.cos(w);let s0=0,s1=0,s2=0,edge=Math.max(1,(count*.04)|0);for(let i=0;i<count;i++){let v=a[start+i];if(i<edge)v*=i/edge;else if(i>=count-edge)v*=(count-1-i)/edge;s0=v+c*s1-s2;s2=s1;s1=s0;}return Math.max(0,s1*s1+s2*s2-c*s1*s2);}
 function fftPower(a,start,count,nfft){let re=new Float32Array(nfft),im=new Float32Array(nfft);let end=Math.min(count,a.length-start);if(start<0||end<count)return null;for(let i=0;i<count;i++){let w=.5-.5*Math.cos(2*Math.PI*i/(count-1));re[i]=a[start+i]*w;}for(let i=1,j=0;i<nfft;i++){let bit=nfft>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){let x=re[i];re[i]=re[j];re[j]=x;}}
   for(let len=2;len<=nfft;len<<=1){let theta=-2*Math.PI/len,wr0=Math.cos(theta),wi0=Math.sin(theta);for(let j=0;j<nfft;j+=len){let wr=1,wi=0;for(let k=0;k<len/2;k++){let h=j+k,l=h+len/2,tr=wr*re[l]-wi*im[l],ti=wr*im[l]+wi*re[l],xr=re[h],xi=im[h];re[h]=xr+tr;im[h]=xi+ti;re[l]=xr-tr;im[l]=xi-ti;let q=wr*wr0-wi*wi0;wi=wr*wi0+wi*wr0;wr=q;}}}
