@@ -75,7 +75,7 @@ if(root){
     records.outbox.unshift({time:new Date().toISOString(),to:recipient(),text:current?.text||'',status:'Audio ausgegeben',frames:d.total});records.outbox.length=Math.min(records.outbox.length,250);store();renderWindow('outbox');
    }else if(d.state==='cancelled'){$('textQueueStatus').textContent='TX-Queue abgebrochen.';$('sendText').disabled=!current||!$('txconfirm').checked;}
   });
-  ['mode','audioFreq','call','textRecipient','textKind'].forEach(id=>$(id)?.addEventListener('change',()=>{
+  ['mode','audioFreq','call','textRecipient','textKind','pttLine','pttLead','txDevice'].forEach(id=>$(id)?.addEventListener('change',()=>{
    if(current){current=null;$('sendText').disabled=true;$('textQueue').replaceChildren();$('textQueueStatus').textContent='Einstellungen geändert: erneut vorbereiten.';}
   }));
  }
