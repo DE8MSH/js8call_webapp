@@ -69,6 +69,7 @@ export async function prepareMessagePlan(details){
  */
 export class MessageSessionTracker{
   constructor(){this.headers=[];this.seen=new Set();}
+  reset(){this.headers=[];this.seen.clear();}
   accept(event){
     if(!event||!event.parsed)return null;
     const p=event.parsed,frequency=Number(event.frequency)||0;
