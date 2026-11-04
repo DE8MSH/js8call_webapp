@@ -3,7 +3,7 @@
  * This module does not implement over-the-air Store & Forward.
  */
 import {makeDirected} from './protocol.js';
-import {encodeJscFrames,prepareJscText} from './jsc-tx.js';
+import {encodeJscFrames,getJscDictionary} from './jsc-tx.js';
 
 const CRC_ALPHABET='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-./?';
 const MAX_AGE_MS=10*60*1000;
@@ -60,11 +60,7 @@ export function createMessagePlan({from,to,text,mode='normal',kind='directed'},d
   throw Error('Unbekannter Nachrichtentyp');
 }
 export async function prepareMessagePlan(details){
-  const source=await prepareJscText('E','normal'); // fetch and cache all dictionary chunks via existing loader
-  void source;
-  // The dictionary loader remains encapsulated inside jsc-tx.js.
-  const {encodeJscMessagePlan}=await import('./jsc-tx.js');
-  return encodeJscMessagePlan(details,createMessagePlan);
+  return createMessagePlan(details,await getJscDictionary());
 }
 
 /* Observes decoded JS8 frames. A directed MSG header is associated with the
