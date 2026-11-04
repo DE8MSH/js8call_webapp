@@ -132,3 +132,7 @@
 .js8-desktop .composer-pane{max-height:none}
 .js8-desktop .calls-pane{min-height:240px}
 }
+
+.js8-desktop .station-context{z-index:250;position:fixed;display:flex;flex-direction:column;min-width:255px;max-width:calc(100vw - 20px);background:#e8edf3;border:1px solid #68798c;box-shadow:0 9px 25px #000a;padding:5px}
+.js8-desktop .station-context button{background:transparent;color:#182738;border:0;border-radius:0;text-align:left;font-size:12px;padding:9px 11px;font-weight:400}
+.js8-desktop .station-context button:hover{background:#467cae;color:#fff}
