@@ -89,7 +89,18 @@ $('wavFile').onchange=async e=>{
   status('WAV fertig: '+checks+' Suchfenster · '+good+' gültige Decodes'+(good?'':' · Prüfe Modus und Audioquelle'));
  }catch(ex){status('WAV-Fehler: '+ex.message);}e.target.value='';
 };
-async function getAudio(){if(!ctx)ctx=new AudioContext({latencyHint:'interactive'});await ctx.resume();return ctx;}
+async function getAudio(){
+ if(!ctx)ctx=new AudioContext({latencyHint:'interactive'});
+ await ctx.resume();
+ const device=$('txDevice')?.value||'';
+ if(device && ctx.sinkId!==device){
+  if(typeof ctx.setSinkId!=='function')throw Error('TX-Ausgangswahl wird von diesem Browser nicht unterstützt (AudioContext.setSinkId).');
+  await ctx.setSinkId(device);
+ }else if(!device && typeof ctx.setSinkId==='function' && typeof ctx.sinkId==='string' && ctx.sinkId!==''){
+  await ctx.setSinkId('');
+ }
+ return ctx;
+}
 function flatten(list){let n=list.reduce((s,x)=>s+x.length,0),out=new Float32Array(n),p=0;for(const c of list){out.set(c,p);p+=c.length;}return out;}
 function spectrogram(){if(!analyser)return;const c=$('spectrum'),g=c.getContext('2d');const db=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(db);g.drawImage(c,0,1);const strip=g.createImageData(c.width,1),hzPerBin=ctx.sampleRate/analyser.fftSize;for(let x=0;x<c.width;x++){const hz=300+x/c.width*2700,bin=Math.floor(hz/hzPerBin),p=db[Math.max(0,Math.min(db.length-1,bin))]/255,v=Math.max(0,Math.min(255,Math.floor((p-.12)*400))),q=x*4;strip.data[q]=Math.max(0,Math.min(255,v*.9));strip.data[q+1]=Math.max(0,Math.min(255,v*1.1));strip.data[q+2]=Math.max(0,Math.min(255,v*1.65));strip.data[q+3]=255;}g.putImageData(strip,0,0);let x=(freq()-300)/2700*c.width;g.fillStyle='#f9ae5a';g.fillRect(x,0,2,2);}
 let captureStartMs=0,captureFrames=0,pcmBlocks=[],nextRxSlot=0,activeMode='normal';
@@ -114,10 +125,18 @@ function acceptRxBuffer(a){
 async function refreshAudioInputs(){
  if(!navigator.mediaDevices?.enumerateDevices){status('Audioeingang-Auswahl erfordert HTTPS');return;}
  const select=$('rxDevice'),previous=select.value;
- const devices=(await navigator.mediaDevices.enumerateDevices()).filter(x=>x.kind==='audioinput');
+ const all=await navigator.mediaDevices.enumerateDevices();
+ const devices=all.filter(x=>x.kind==='audioinput');
  select.replaceChildren(new Option('Standard-Audioeingang',''));
  devices.forEach((d,i)=>select.add(new Option(d.label||('Audioeingang '+(i+1)),d.deviceId)));
  if([...select.options].some(o=>o.value===previous))select.value=previous;
+ const out=$('txDevice');
+ if(out){
+  const selected=out.value;
+  out.replaceChildren(new Option('Standard-Audioausgang',''));
+  all.filter(d=>d.kind==='audiooutput').forEach((d,i)=>out.add(new Option(d.label||('Audioausgang '+(i+1)),d.deviceId)));
+  if([...out.options].some(o=>o.value===selected))out.value=selected;
+ }
 }
 $('refreshAudio').onclick=()=>refreshAudioInputs().catch(e=>status('Audioeingänge: '+e.message));
 navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshAudioInputs().catch(()=>{}));
@@ -163,7 +182,7 @@ init();
 let textTxPacket=null,textTxIndex=0,textTxRunning=false,textTxAborted=false;
 let textTxFingerprint='';
 function txQueueFingerprint(){
-  return [$('mode').value,$('audioFreq').value,$('call').value,$('textRecipient')?.value||'', $('textKind')?.value||'plain'].join('|');
+  return [$('mode').value,$('audioFreq').value,$('call').value,$('textRecipient')?.value||'', $('textKind')?.value||'plain',$('txDevice')?.value||''].join('|');
 }
 function currentTxQueueValid(){return txQueueFingerprint()===textTxFingerprint;}
 function textTxEvent(state,extra={}){window.dispatchEvent(new CustomEvent('js8:txqueue',{detail:{state,...extra}}));}
