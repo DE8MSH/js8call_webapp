@@ -272,6 +272,47 @@ if(workspace&&menu){
   bar.hidden=!storedVisibility;
  }
 
+ // Qt textVerticalSplitter: adjust receive transcript vs TX composer height.
+ if(center){
+  const rxPanel=center.querySelector('.message-pane'),txPanel=center.querySelector('.composer-pane');
+  if(rxPanel&&txPanel){
+   center.classList.add('qt-vertical-split');
+   const key='js8web:qt-text-split:v11';
+   let ratio=Number(read(key,43));
+   if(!Number.isFinite(ratio)||ratio<25||ratio>75)ratio=43;
+   const bar=mk('div','qt-v-grip');
+   bar.tabIndex=0;bar.setAttribute('role','separator');
+   bar.setAttribute('aria-orientation','horizontal');
+   bar.setAttribute('aria-label','Empfangstext und Nachrichteneditor vergrößern');
+   function apply(){
+    center.style.gridTemplateRows='minmax(160px,'+ratio+'fr) 7px minmax(250px,'+(100-ratio)+'fr)';
+    write(key,ratio);
+   }
+   function adjust(delta){
+    ratio=Math.max(25,Math.min(75,ratio+delta));apply();
+   }
+   let dragging=null;
+   bar.addEventListener('pointerdown',e=>{
+    if(matchMedia('(max-width:950px)').matches)return;
+    dragging=e.clientY;bar.setPointerCapture(e.pointerId);
+   });
+   bar.addEventListener('pointermove',e=>{
+    if(dragging===null)return;
+    const height=Math.max(1,center.getBoundingClientRect().height);
+    const delta=(e.clientY-dragging)/height*100;
+    dragging=e.clientY;adjust(delta);
+   });
+   bar.addEventListener('pointerup',()=>{dragging=null;});
+   bar.addEventListener('pointercancel',()=>{dragging=null;});
+   bar.addEventListener('keydown',e=>{
+    if(e.key==='ArrowUp'||e.key==='ArrowDown'){
+     e.preventDefault();adjust(e.key==='ArrowDown'?3:-3);
+    }
+   });
+   center.insertBefore(bar,txPanel);
+   apply();
+  }
+ }
  // Qt QSplitter topSplitter: draggable, keyboard-accessible station columns.
  if(band&&center&&calls){
   workspace.classList.add('qt-split-workspace');
