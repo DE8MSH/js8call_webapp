@@ -256,7 +256,7 @@ __attribute__((visibility("default"))) int js8_decode(void){
  for(int iter=0;iter<55;iter++){
   for(int c=0;c<87;c++)for(int j=0;j<7;j++){
    int v=check_nodes[c][j];if(v==255)continue;
-   float minv=1e12f;int sign=1;
+   float minv=1e12f;int sign=-1; /* even parity: LLR>0 means bit 1, so baseline outgoing LLR is negative */
    for(int k=0;k<7;k++){if(k==j||check_nodes[c][k]==255)continue;float x=v2c[c][k];if(x>0)sign=-sign;float a=x<0?-x:x;if(a<minv)minv=a;}
    c2v[c][j]=sign*minv*.78f;
   }
