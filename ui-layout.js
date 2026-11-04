@@ -29,7 +29,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     details.addEventListener('toggle',()=>{if(details.open)[...menubar.querySelectorAll('details')].filter(e=>e!==details).forEach(e=>e.open=false);});
     menubar.append(details);
   }
-  const version=el('span','app-version','JS8Web LAB 0.8 · RX/TX'),menutop=el('span','app-menu-separator');
+  const version=el('span','app-version','JS8Web LAB 0.9 · RX/TX'),menutop=el('span','app-menu-separator');
   menubar.append(menutop,version);
   document.body.insertBefore(menubar,header);
   const toolbar=el('section','rig-toolbar');
@@ -68,7 +68,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
   statusline.innerHTML='<span id="rxState">Empfang bereit</span><span id="lastCall">Keine Aktivität</span><span id="stationStatus">JS8 · NORMAL</span>';
   main.append(statusline);
   const bandLog=$('log');if(bandLog)bandLog.setAttribute('aria-label','Band Activity');
-  const topText=document.createElement('div');topText.className='window-label';topText.textContent='JS8Call · WebAssembly RX';header.prepend(topText);
+  const topText=document.createElement('div');topText.className='window-label';topText.textContent='JS8Call · WebAssembly RX/TX';header.prepend(topText);
   const oldHeaderClock=$('utc'),oldStatus=$('clockStatus'),clockText=$('rigUtc'),slotText=$('rigSlot');
   function clock(){clockText.textContent=oldHeaderClock?.textContent||'--:--:-- UTC';slotText.textContent=oldStatus?.textContent||'';}
   setInterval(clock,400);clock();
@@ -181,7 +181,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     ptt:()=>{$('#settingsDrawer').open=true;$('#pttLine').scrollIntoView({behavior:'smooth',block:'center'});},
     diagnosis:()=>diagnosis.scrollIntoView({behavior:'smooth',block:'start'}),
     original:()=>window.open('https://github.com/js8call/js8call','_blank','noopener'),
-    help:()=>window.alert('JS8Web LAB 0.6 · Browser-Teilport. Empfang und CQ/HB-Kurzbefehle verfügbar; JSC-Freitext-Dekompression ist implementiert; Inbox und vollständige QSO-Steuerung fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
+    help:()=>window.alert('JS8Web LAB 0.9 · Browser-Teilport. Empfang und CQ/HB-Kurzbefehle verfügbar; JSC-Freitext-Dekompression ist implementiert; Inbox und vollständige QSO-Steuerung fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
     save:()=>{saveSettings();window.alert('Stations-/Anzeigeeinstellungen lokal im Browser gespeichert.');},
     auto:()=>{$('scanAuto').checked=!$('scanAuto').checked;saveSettings();},
     'toggle-band':()=>{bandPane.classList.toggle('pane-hidden');saveSettings();},
