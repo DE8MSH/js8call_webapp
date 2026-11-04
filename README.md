@@ -1,8 +1,23 @@
-# JS8Web LAB 0.7 – GitHub-Pages-Webapp
+# JS8Web LAB 0.8 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
+
+## Stand 0.8 – verbesserter RX-Decoder (JS8Call-Teilaspekte)
+
+Der browserseitige Worker \`rx-worker.js\` dekodiert weiterhin **ausschließlich nach erfolgreichem CRC12/LDPC(174,87)**. Für schwierige Empfangssituationen sind drei neue, begrenzte Decodierwege hinzugekommen:
+
+* **Zweite LLR-Auswertung:** Nach einem erfolglosen Max-Log-Decodierlauf versucht der Worker eine rauschnormalisierte Log-Sum-Exp-Auswertung der 8-FSK-Tonenergien.
+* **Soft-Bit-Kombination wiederholter Frames:** Der neue \`rx-enhance.js\` übernimmt konzeptionell die Signatur-/Kombinationsidee aus dem hochgeladenen Original \`JS8_Mode/soft_combiner.h\`. 174 Soft-Bits werden nur für zeitlich getrennte UTC-Slots mit ähnlichem Modus, Frequenz, Timing und Bit-Signatur kombiniert. Die Daten werden zeitlich begrenzt und beim RX-Stopp geleert. Überlappende Empfangsfenster desselben Slots zählen ausdrücklich nicht mehrfach.
+* **Begrenzte SIC-Suche:** Nach einem bereits **CRC/LDPC-validierten** Frame wird dessen 79-Ton-Wellenform per Least-Squares an die Audioaufnahme angepasst und versuchsweise subtrahiert. Ein zweiter Suchlauf erfolgt nur in einem lokal begrenzten Frequenzbereich um erkannte Signale. Das ist eine experimentelle Interferenzunterdrückung, kein Ersatz für den originalen Decoder.
+
+Das Kontrollkästchen **Enhanced RX · Soft-FEC / SIC** aktiviert/deaktiviert diese zusätzlichen Versuche. Da sie mehr Rechenleistung benötigen, auf schwachen Rechnern bei Rückständen deaktivieren.
+
+**WAV-Import:** Mit **WAV: alle 4 Modi** sucht die Anwendung nacheinander NORMAL, FAST, TURBO und SLOW. **WAV-Abbruch** stoppt die Verarbeitung nach dem laufenden Worker-Fenster. Live-RX decodiert weiterhin einen gewählten Modus; automatischer Submode-Wechsel in Echtzeit ist noch nicht implementiert. Decoder-Strategie und eventuelle Soft-Kombination werden in den Empfangsmetadaten/CSV erfasst.
+
+**Reproduzierbare Tests:** \`tests/rx-enhance.mjs\` prüft Signaturabgrenzung, Abweisung duplizierter Slots und das Subtrahieren eines synthetischen JS8-Tonsignals. \`tests/rx-scan.mjs\` prüft weiterhin das tatsächliche WASM-LDPC- und CRC-Decoding. Erfolgreiche synthetische Tests sind noch keine HF-Schwachsignalvalidierung. **Dies ist weiterhin kein vollständiger Port der WSJT-X/JS8Call-Decoder-Engine.**
+
 
 ## CAT-Ausbau · Yaesu FT-450/FT-450D
 
