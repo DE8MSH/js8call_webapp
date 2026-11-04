@@ -33,7 +33,7 @@ Der Empfänger sucht ausschließlich **eine manuell ausgewählte Audiofrequenz**
 Das Repository https://github.com/DE8MSH/js8call_webapp enthält die Quelldateien.
 Der Workflow `.github/workflows/deploy.yml` baut `js8-core.wasm` aus `js8-core.c`,
 führt die 12 Selbsttests aus und veröffentlicht das Ergebnis via GitHub Pages.
-Der erzeugte WASM-Codec wird zusätzlich von GitHub Actions nach `main` committed.
+Der erzeugte WASM-Codec ist Bestandteil des Pages-Deployments und wird zusätzlich als herunterladbares Build-Artefakt gespeichert.
 Es wird kein externer Backendserver benötigt.
 
 **Einmalige Einstellung:** In **Settings → Pages → Build and deployment → Source**
@@ -63,7 +63,7 @@ cd js8web-pages
 ./PRUEFEN.sh
 ```
 
-Wenn `emcc` vorhanden ist, nutzt `BAUEN.sh` Emscripten. Andernfalls wird ein freestanding `wasm32`-Build mit `clang` und `wasm-ld` erzeugt (gleiche WebAssembly-Exports). Im Repository wird das WASM-Modul von GitHub Actions gebaut. Das ursprüngliche Lab-Paket enthielt einen vorgefertigten `clang`-Build. Ein Emscripten-Build wurde hier nicht ausgeführt. Der Codec benötigt keine OS-Funktionen und keine Backenddienste.
+Wenn `emcc` vorhanden ist, nutzt `BAUEN.sh` Emscripten. Andernfalls wird ein freestanding `wasm32`-Build mit `clang` und `wasm-ld` erzeugt (gleiche WebAssembly-Exports). Beim GitHub-Pages-Deployment wird das WASM-Modul von GitHub Actions gebaut. Das ursprüngliche Lab-Paket enthielt einen vorgefertigten `clang`-Build. Ein Emscripten-Build wurde hier nicht ausgeführt. Der Codec benötigt keine OS-Funktionen und keine Backenddienste.
 
 ### Architektur
 
