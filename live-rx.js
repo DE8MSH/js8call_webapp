@@ -89,11 +89,15 @@ export class BoundedLiveDecoder{
    if(this.lanes[lane])continue;
    let job;
    while(this.waiting.length){
-    job=this.waiting.shift();
+    // Keep frames of the same submode sequential; completing the newer
+    // frame first would corrupt JSC message reassembly.
+    const eligible=this.waiting.findIndex(j=>!this.lanes.some(active=>active?.mode===j.mode));
+    if(eligible<0)break;
+    job=this.waiting.splice(eligible,1)[0];
     if(this.now()-job.endMs<=this.maxAgeMs)break;
     this.dropped++;this.onDrop(job,'stale');job=null;
    }
-   if(!job)break;
+   if(!job)continue;
    const epoch=this.generation;
    this.lanes[lane]=job;
    Promise.resolve().then(()=>this.decode(job,lane)).then(result=>{
