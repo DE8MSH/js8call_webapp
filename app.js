@@ -1,5 +1,6 @@
 import {makeHeartbeat,makeDirected,parseFrame} from './protocol.js';
 import {decodeJscFrame,MessageAssembler} from './jsc.js';
+import {prepareJscText} from './jsc-tx.js';
 /* JS8Web LAB browser controller, GPL-3.0. See README.md for precise limitations. */
 const $=id=>document.getElementById(id);
 const MODES={normal:{sps:1920,period:15,delay:.5,cos:0},fast:{sps:1200,period:10,delay:.2,cos:1},turbo:{sps:600,period:6,delay:.1,cos:1},slow:{sps:3840,period:30,delay:.5,cos:1}};
@@ -151,3 +152,58 @@ $('tx').onclick=async()=>{try{if(!prepared||!$('txconfirm').checked)throw Error(
 $('cancel').onclick=async()=>{clearTimeout(pttTimer);clearTimeout(txTimer);try{txSource?.stop();}catch{}transmitting=false;await pttActive(false).catch(e=>status(e.message));$('cancel').disabled=true;$('tx').disabled=!prepared||!$('txconfirm').checked;status('TX gestoppt, PTT deaktiviert.');};
 window.addEventListener('beforeunload',()=>{if(transmitting)try{txSource?.stop()}catch{};});
 init();
+
+/* JSC text TX queue: uses the existing WebAssembly transport coder and
+ * per-slot TX audio. Operator must explicitly approve every queue run. */
+let textTxPacket=null,textTxIndex=0,textTxRunning=false,textTxAborted=false;
+function textTxEvent(state,extra={}){window.dispatchEvent(new CustomEvent('js8:txqueue',{detail:{state,...extra}}));}
+window.addEventListener('js8:prepare-text',async({detail})=>{
+  textTxPacket=null;textTxRunning=false;textTxAborted=false;
+  try{
+    const original=String(detail?.text||'');
+    const from=($('call').value||'').trim().toUpperCase();
+    const to=($('textRecipient')?.value||'@ALLCALL').trim().toUpperCase();
+    if(!/^[A-Z0-9/]{3,18}$/.test(from))throw Error('Bitte ein gültiges eigenes Rufzeichen eintragen.');
+    const prefix=original.toUpperCase().startsWith(from+':')?'':from+': '+(to!=='@ALLCALL'?to+' ':'');
+    const packet=await prepareJscText(prefix+original,$('mode').value);
+    textTxPacket=packet;textTxIndex=0;
+    for(let type=0;type<8;type++)if(![...$('type').options].some(o=>Number(o.value)===type)){
+      const option=new Option('Transporttyp '+type,String(type));$('type').append(option);
+    }
+    textTxEvent('ready',{packet});
+    status('JSC TX: '+packet.frames.length+' komprimierte JS8-Frames mit FIRST/LAST vorbereitet.');
+  }catch(e){textTxEvent('error',{error:e.message});status('JSC TX: '+e.message);}
+});
+async function sendTextFrame(){
+  if(textTxAborted||!textTxRunning||!textTxPacket)return;
+  const f=textTxPacket.frames[textTxIndex];
+  if(!f){textTxRunning=false;textTxEvent('complete',{total:textTxPacket.frames.length});return;}
+  $('message').value=f.frame;$('type').value=String(f.type);prepare();
+  if(!prepared){textTxRunning=false;textTxEvent('error',{error:'WASM-Frame konnte nicht codiert werden'});return;}
+  textTxEvent('sending',{index:textTxIndex,total:textTxPacket.frames.length});
+  await $('tx').onclick();
+  if(!transmitting||!txSource){textTxRunning=false;textTxEvent('error',{error:'Audio-Ausgabe konnte nicht gestartet werden'});return;}
+  txSource.addEventListener('ended',()=>{
+    if(!textTxRunning||textTxAborted)return;
+    textTxIndex++;
+    if(textTxIndex>=textTxPacket.frames.length){
+      textTxRunning=false;textTxEvent('complete',{total:textTxPacket.frames.length});
+    }else setTimeout(()=>sendTextFrame().catch(e=>{textTxRunning=false;textTxEvent('error',{error:e.message});}),500);
+  },{once:true});
+}
+window.addEventListener('js8:send-queue',()=>{
+  if(!textTxPacket||textTxRunning)return;
+  if(!$('txconfirm').checked){textTxEvent('error',{error:'TX-Freigabe fehlt'});return;}
+  textTxRunning=true;textTxAborted=false;textTxIndex=0;
+  sendTextFrame().catch(e=>{textTxRunning=false;textTxEvent('error',{error:e.message});});
+});
+function abortTextQueue(){
+  if(!textTxRunning)return;
+  textTxRunning=false;textTxAborted=true;textTxEvent('cancelled');
+}
+const originalTextCancel=$('cancel').onclick;
+$('cancel').onclick=async function(event){abortTextQueue();return originalTextCancel.call(this,event);};
+window.addEventListener('js8:clear-txqueue',()=>{
+  abortTextQueue();textTxPacket=null;
+  if(transmitting)$('cancel').onclick();
+});
