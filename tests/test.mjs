@@ -34,3 +34,30 @@ for(const mode of ['normal','fast','turbo','slow']){
 }
 globalThis.fetch=originalFetch;
 console.log('Alle '+tests+' Tests erfolgreich.');
+
+
+const {makeHeartbeat,makeDirected,parseFrame,packGrid,unpackGrid,packCallsign,unpackCallsign} = await import('../protocol.js');
+const cq=makeHeartbeat('DO7OO','JO43','CQ');
+check(cq.type===3 && cq.frame.length===12,'CQ transport type is FIRST|LAST (3)');
+const cqRx=parseFrame(cq.frame);
+check(cqRx.kind==='beacon' && cqRx.command==='CQ' && cqRx.call==='DO7OO' && cqRx.grid==='JO43','JS8Call varicode CQ/locator roundtrip');
+const hb=parseFrame(makeHeartbeat('DO7OO','JO43','HB').frame);
+check(hb.command==='HB' && hb.call==='DO7OO' && hb.grid==='JO43','JS8Call heartbeat roundtrip');
+check(unpackGrid(packGrid('JO43'))==='JO43','Maidenhead grid packing');
+const packed=packCallsign('DO7OO');
+check(unpackCallsign(packed.value,packed.portable)==='DO7OO','28-bit base callsign roundtrip');
+const directed=makeDirected('DO7OO','DK4HAA','GRID?');
+const directedRx=parseFrame(directed.frame);
+check(directed.type===3 && directedRx.kind==='directed' && directedRx.call==='DO7OO' && directedRx.to==='DK4HAA' && directedRx.command==='GRID?','Directed GRID? protocol frame roundtrip');
+{
+  const pkt=makeHeartbeat('DO7OO','JO43','CQ');
+  bytes.set(Buffer.from(pkt.frame),e.js8_input_ptr());
+  check(e.js8_encode(pkt.type,0)===0,'Protocol CQ to native WASM encoder');
+  const t=Array.from(new Int32Array(e.memory.buffer,e.js8_tones_ptr(),79));
+  const n=replies.length;
+  self.onmessage({data:{id:1001,synthetic:true,tones:t,freq:1500,mode:'normal'}});
+  for(let i=0;i<200&&replies.length===n;i++)await new Promise(r=>setTimeout(r,25));
+  const rx=replies.at(-1);
+  check(rx?.ok && parseFrame(rx.text).command==='CQ' && rx.type===3,'Native WASM JS8 transport -> browser protocol CQ');
+}
+console.log('JS8-Protokoll-Tests abgeschlossen: '+tests);
