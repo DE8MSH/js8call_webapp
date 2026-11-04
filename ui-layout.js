@@ -29,7 +29,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     details.addEventListener('toggle',()=>{if(details.open)[...menubar.querySelectorAll('details')].filter(e=>e!==details).forEach(e=>e.open=false);});
     menubar.append(details);
   }
-  const version=el('span','app-version','JS8Web LAB 0.4 · RX'),menutop=el('span','app-menu-separator');
+  const version=el('span','app-version','JS8Web LAB 0.5 · RX'),menutop=el('span','app-menu-separator');
   menubar.append(menutop,version);
   document.body.insertBefore(menubar,header);
   const toolbar=el('section','rig-toolbar');
@@ -162,7 +162,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     ptt:()=>{$('#settingsDrawer').open=true;$('#pttLine').scrollIntoView({behavior:'smooth',block:'center'});},
     diagnosis:()=>diagnosis.scrollIntoView({behavior:'smooth',block:'start'}),
     original:()=>window.open('https://github.com/js8call/js8call','_blank','noopener'),
-    help:()=>window.alert('JS8Web LAB 0.4 · Browser-Teilport. Empfang und CQ/HB-Kurzbefehle verfügbar; JSC-Freitext und Inbox noch nicht vollständig. Keine vollständige JS8Call-Desktop-Emulation.'),
+    help:()=>window.alert('JS8Web LAB 0.5 · Browser-Teilport. Empfang und CQ/HB-Kurzbefehle verfügbar; JSC-Freitext-Dekompression ist implementiert; Inbox und vollständige QSO-Steuerung fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
     save:()=>{saveSettings();window.alert('Stations-/Anzeigeeinstellungen lokal im Browser gespeichert.');},
     auto:()=>{$('scanAuto').checked=!$('scanAuto').checked;saveSettings();},
     'toggle-band':()=>{bandPane.classList.toggle('pane-hidden');saveSettings();},
