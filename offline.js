@@ -9,8 +9,7 @@ const CORE=[
  'tx-slots.js','js8-core.wasm','manifest.webmanifest'
 ];
 const CHUNKS=Array.from({length:8},(_,i)=>'jsc-dict/chunk'+i+'.json');
-const panel=document.querySelector('main > section.panel:last-of-type')||
-  document.querySelector('main .panel:last-of-type');
+const panel=document.getElementById('status')?.closest('section.panel');
 if(panel){
  const block=document.createElement('div');block.className='offline-controls';
  block.innerHTML='<h3>Offline-Betrieb / PWA</h3>'+
@@ -68,7 +67,7 @@ if(panel){
   }catch(e){notify('Offline-Paket nicht vollständig: '+e.message);}
   finally{working=false;button.disabled=false;}
  };
- if('serviceWorker'in navigator&&location.protocol==='https:'||location.hostname==='localhost'){
+ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
   navigator.serviceWorker.register('./sw.js',{scope:'./'})
    .then(()=>navigator.serviceWorker.ready).then(()=>inspect())
    .catch(e=>notify('Service Worker: '+e.message));
