@@ -28,17 +28,20 @@ Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solch
 
 Der Empfänger sucht ausschließlich **eine manuell ausgewählte Audiofrequenz** und prüft die empfangenen Bits mit dem originalen CRC12 sowie einem vereinfachten Min-Sum-LDPC-Decoder. Er ist nicht vergleichbar mit dem vollwertigen Mehrsignal-/Schwachsignal-Decoder von JS8Call.
 
-## Direkt auf GitHub Pages hochladen – ohne GitHub Actions
+## GitHub Pages – automatische Bereitstellung
 
-1. ZIP `JS8Web_LAB_GitHubPages_v0.1.zip` herunterladen und entpacken.
-2. Auf GitHub ein **öffentliches** Repository anlegen, z. B. `js8call_webapp`.
-3. **Den Inhalt des entpackten Ordners** in das Repository-Root hochladen (`index.html`, `app.js`, `rx-worker.js`, `js8-core.wasm`, `app.css` usw.). Nicht nur die ZIP-Datei hochladen.
-4. **Settings → Pages → Build and deployment**: `Deploy from a branch` auswählen, danach `main` und `/(root)` auswählen und speichern.
-5. Die Website ist dann üblicherweise unter `https://DEINNAME.github.io/js8call_webapp/` erreichbar. Wenn das Repository `DEINNAME.github.io` heißt, liegt die Seite stattdessen im Root `https://DEINNAME.github.io/`.
+Das Repository https://github.com/DE8MSH/js8call_webapp enthält die Quelldateien.
+Der Workflow `.github/workflows/deploy.yml` baut `js8-core.wasm` aus `js8-core.c`,
+führt die 12 Selbsttests aus und veröffentlicht das Ergebnis via GitHub Pages.
+Der erzeugte WASM-Codec wird zusätzlich von GitHub Actions nach `main` committed.
+Es wird kein externer Backendserver benötigt.
 
-Es wird kein GitHub-Actions-Workflow mitgeliefert. `js8-core.wasm` ist bereits enthalten. Manche GitHub-Pages-Deployments können trotzdem in GitHubs eigener Deployments-/Actions-Anzeige erscheinen.
+**Einmalige Einstellung:** In **Settings → Pages → Build and deployment → Source**
+**GitHub Actions** auswählen. Falls der erste Workflow vor der Aktivierung scheitert,
+in **Actions → Build and deploy JS8Web LAB → Run workflow** erneut ausführen.
+Die spätere URL ist: **https://de8msh.github.io/js8call_webapp/**
 
-**HTTPS:** GitHub Pages stellt HTTPS bereit. Für Mikrofon und WebSerial ist ein sicherer Ursprung notwendig. `file://` ist für das Laden des WASM-Moduls unzuverlässig und wird nicht als Installationsmethode empfohlen.
+GitHub Pages bietet HTTPS; der erste Deploy ist erst nach erfolgreichem Actions-Lauf live.
 
 ## Lokaler Test auf Linux Mint 22
 
@@ -48,7 +51,7 @@ cd js8web-pages
 python3 -m http.server 8765
 ```
 
-Dann `http://localhost:8765/` in Chrome/Chromium/Edge öffnen. Unter `localhost` ist Mikrofonzugriff ebenfalls erlaubt. Für das Bauen mit Emscripten muss `emcc` installiert sein. Das beigelegte WASM funktioniert auch ohne diese Installation.
+Dann `http://localhost:8765/` in Chrome/Chromium/Edge öffnen. Unter `localhost` ist Mikrofonzugriff ebenfalls erlaubt. Für das Bauen mit Emscripten muss `emcc` installiert sein. Die mit GitHub Actions gebaute WASM-Datei funktioniert danach auch ohne lokale Emscripten-Installation.
 
 ## WASM mit Emscripten aus Quellcode bauen
 
@@ -60,7 +63,7 @@ cd js8web-pages
 ./PRUEFEN.sh
 ```
 
-Wenn `emcc` vorhanden ist, nutzt `BAUEN.sh` Emscripten. Andernfalls wird ein freestanding `wasm32`-Build mit `clang` und `wasm-ld` erzeugt (gleiche WebAssembly-Exports). Der **beigelegte** `js8-core.wasm`-Build wurde mit dem zweiten Verfahren erstellt, da in der Erstellungssitzung kein `emcc` verfügbar war. Ein Emscripten-Build wurde hier nicht ausgeführt. Der Codec benötigt keine OS-Funktionen und keine Backenddienste.
+Wenn `emcc` vorhanden ist, nutzt `BAUEN.sh` Emscripten. Andernfalls wird ein freestanding `wasm32`-Build mit `clang` und `wasm-ld` erzeugt (gleiche WebAssembly-Exports). Im Repository wird das WASM-Modul von GitHub Actions gebaut. Das ursprüngliche Lab-Paket enthielt einen vorgefertigten `clang`-Build. Ein Emscripten-Build wurde hier nicht ausgeführt. Der Codec benötigt keine OS-Funktionen und keine Backenddienste.
 
 ### Architektur
 
