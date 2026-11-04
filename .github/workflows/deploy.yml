@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -39,15 +39,11 @@ jobs:
           node --check rx-worker.js
           node tests/test.mjs
 
-      - name: Publish precompiled WASM on main
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js8-core.wasm
-          if ! git diff --cached --quiet; then
-            git commit -m "Build JS8 WebAssembly binary [skip ci]"
-            git push
-          fi
+      - name: Save precompiled WASM as downloadable build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: js8-core-wasm
+          path: js8-core.wasm
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
