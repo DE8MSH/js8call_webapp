@@ -153,4 +153,4 @@ async function decode(msg){
  return{ok:false,reason:'Kein CRC/LDPC-gültiger JS8-Frame ('+scan.candidates.length+' Sync-Kandidaten)',
    q:scan.best,scanPeak:scan.peakFreq,checked};
 }
-self.onmessage=async ev=>{try{self.postMessage({id:ev.data.id,...await decode(ev.data)});}catch(ex){self.postMessage({id:ev.data.id,ok:false,reason:String(ex.message||ex)});}};
+self.onmessage=async ev=>{if(ev.data?.reset){combiner.clear();return;}try{self.postMessage({id:ev.data.id,...await decode(ev.data)});}catch(ex){self.postMessage({id:ev.data.id,ok:false,reason:String(ex.message||ex)});}};
