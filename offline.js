@@ -1,12 +1,12 @@
-/* JS8Web 0.9 optional offline deployment controller.
+/* JS8Web 1.0 optional offline deployment controller.
  * Offline status is based on verified CacheStorage entries, not navigator.onLine.
  * GPL-3.0-or-later. */
-const CACHE='js8web-static-v09';
+const CACHE='js8web-static-v10';
 const CORE=[
  'index.html','app.css','desktop-extra.css','ui-layout.js','app.js',
  'desktop-extra.js','offline.js','ft450-cat.js','protocol.js','jsc.js',
  'jsc-tx.js','js8-messages.js','rx-worker.js','rx-enhance.js',
- 'tx-slots.js','js8-core.wasm','manifest.webmanifest'
+ 'tx-slots.js','live-rx.js','js8-core.wasm','manifest.webmanifest'
 ];
 const CHUNKS=Array.from({length:8},(_,i)=>'jsc-dict/chunk'+i+'.json');
 const panel=document.getElementById('status')?.closest('section.panel');
