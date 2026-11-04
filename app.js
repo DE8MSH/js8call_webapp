@@ -1,6 +1,7 @@
 import {makeHeartbeat,makeDirected,parseFrame} from './protocol.js';
 import {decodeJscFrame,MessageAssembler} from './jsc.js';
 import {prepareMessagePlan,MessageSessionTracker} from './js8-messages.js';
+import {SlotTransmitter} from './tx-slots.js';
 /* JS8Web LAB browser controller, GPL-3.0. See README.md for precise limitations. */
 const $=id=>document.getElementById(id);
 const MODES={normal:{sps:1920,period:15,delay:.5,cos:0},fast:{sps:1200,period:10,delay:.2,cos:1},turbo:{sps:600,period:6,delay:.1,cos:1},slow:{sps:3840,period:30,delay:.5,cos:1}};
@@ -191,9 +192,60 @@ function pttActive(state){if(!serial||$('pttLine').value==='none')return Promise
 $('serialConnect').onclick=async()=>{try{if(!navigator.serial)throw Error('WebSerial nur in kompatiblen Chromium-Browsern über HTTPS verfügbar');serial=await navigator.serial.requestPort();await serial.open({baudRate:9600});$('serialStatus').textContent='Port verbunden';$('serialConnect').disabled=true;$('serialDisconnect').disabled=false;status('WebSerial-Port verbunden – RTS/DTR nur mit korrekter PTT-Verdrahtung nutzen.');}catch(e){serial=null;status('WebSerial: '+e.message)}};
 $('serialDisconnect').onclick=async()=>{try{await pttActive(false);await serial?.close();}catch(e){status(e.message);}finally{serial=null;$('serialStatus').textContent='Nicht verbunden';$('serialConnect').disabled=false;$('serialDisconnect').disabled=true;}};
 let transmitting=false;
-$('tx').onclick=async()=>{try{if(!prepared||!$('txconfirm').checked)throw Error('Vorbereiten und Laborfreigabe erforderlich');if(transmitting)return;const ac=await getAudio(),m=MODES[prepared.mode],now=Date.now(),off=Number($('offset').value||0),periodMs=m.period*1000,next=Math.ceil((now+off+400)/periodMs)*periodMs-off;const start=ac.currentTime+(next-now)/1000;const samples=audioSamples(prepared.tones,m,prepared.freq,ac.sampleRate);const buffer=ac.createBuffer(1,samples.length,ac.sampleRate);buffer.copyToChannel(samples,0);txSource=ac.createBufferSource();txSource.buffer=buffer;txSource.connect(ac.destination);transmitting=true;$('tx').disabled=true;$('cancel').disabled=false;txSource.onended=async()=>{if(!transmitting)return;transmitting=false;clearTimeout(pttTimer);await pttActive(false).catch(e=>status('PTT: '+e.message));$('cancel').disabled=true;$('tx').disabled=!$('txconfirm').checked;status('TX-Audio beendet, PTT aus.');};const wait=Math.max(0,next-now-200);pttTimer=setTimeout(()=>pttActive(true).catch(err=>status('PTT-Fehler: '+err.message)),wait);txSource.start(start);txSource.stop(start+m.period);status(`JS8-Laborframe TX eingeplant: ${new Date(next).toISOString().slice(11,19)} UTC · ${prepared.mode} · ${prepared.freq} Hz. Die Soundkarte kann für HF-TX eine eigene PTT-Anbindung benötigen.`);}catch(e){status('TX: '+e.message);transmitting=false;$('tx').disabled=false;$('cancel').disabled=true;}};
-$('cancel').onclick=async()=>{clearTimeout(pttTimer);clearTimeout(txTimer);try{txSource?.stop();}catch{}transmitting=false;await pttActive(false).catch(e=>status(e.message));$('cancel').disabled=true;$('tx').disabled=!prepared||!$('txconfirm').checked;status('TX gestoppt, PTT deaktiviert.');};
-window.addEventListener('beforeunload',()=>{if(transmitting)try{txSource?.stop()}catch{};});
+const txController=new SlotTransmitter({
+  ptt:state=>pttActive(state),
+  status:event=>{
+    if(event.state==='armed')status('TX vorbereitet für '+new Date(event.utcMs).toISOString().slice(11,19)+' UTC · PTT vor dem Audio');
+    else if(event.state==='onair')status('TX-Audio aktiv · Slot '+new Date(event.utcMs).toISOString().slice(11,19)+' UTC');
+    else if(event.state==='ptt-release-error')status('PTT-Freigabe fehlgeschlagen: '+event.error+' · Funkgerät sofort prüfen!');
+  }
+});
+$('tx').onclick=async()=>{
+ if(!prepared||!$('txconfirm').checked){status('TX: Frame und manuelle TX-Freigabe erforderlich');return false;}
+ if(transmitting||txController.busy)return false;
+ transmitting=true;$('tx').disabled=true;$('cancel').disabled=false;
+ const frame=prepared;
+ try{
+  const m=MODES[frame.mode];
+  const result=await txController.transmit({
+    periodMs:m.period*1000,
+    utcCorrectionMs:Number($('offset').value||0),
+    leadMs:350,
+    audio:()=>getAudio(),
+    createSource:ac=>{
+      const samples=audioSamples(frame.tones,m,frame.freq,ac.sampleRate);
+      const buffer=ac.createBuffer(1,samples.length,ac.sampleRate);
+      buffer.copyToChannel(samples,0);
+      const s=ac.createBufferSource();s.buffer=buffer;s.connect(ac.destination);return s;
+    },
+    onSource:s=>{txSource=s;}
+  });
+  status('JS8-Audioframe vollständig ausgegeben, PTT deaktiviert · '+new Date(result.utcMs).toISOString().slice(11,19)+' UTC');
+  return true;
+ }catch(e){
+  status('TX nicht abgeschlossen: '+e.message);
+  return false;
+ }finally{
+  transmitting=false;txSource=null;
+  $('cancel').disabled=true;$('tx').disabled=!prepared||!$('txconfirm').checked;
+ }
+};
+$('cancel').onclick=async()=>{
+  await txController.cancel();
+  transmitting=false;txSource=null;
+  $('cancel').disabled=true;$('tx').disabled=!prepared||!$('txconfirm').checked;
+  status('TX abgebrochen · PTT-Freigabe angefordert.');
+};
+$('txconfirm').addEventListener('change',()=>{
+  if(!$('txconfirm').checked&&txController.busy)$('cancel').click();
+});
+$('serialDisconnect').addEventListener('click',()=>{
+  if(txController.busy)$('cancel').click();
+},true);
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden&&txController.busy)$('cancel').click();
+});
+window.addEventListener('pagehide',()=>{void txController.cancel();});
 init();
 
 /* JSC text TX queue: uses the existing WebAssembly transport coder and
@@ -231,15 +283,21 @@ async function sendTextFrame(){
   $('message').value=f.frame;$('type').value=String(f.type);prepare();
   if(!prepared){textTxRunning=false;textTxEvent('error',{error:'WASM-Frame konnte nicht codiert werden'});return;}
   textTxEvent('sending',{index:textTxIndex,total:textTxPacket.frames.length});
-  await $('tx').onclick();
-  if(!transmitting||!txSource){textTxRunning=false;textTxEvent('error',{error:'Audio-Ausgabe konnte nicht gestartet werden'});return;}
-  txSource.addEventListener('ended',()=>{
-    if(!textTxRunning||textTxAborted)return;
-    textTxIndex++;
-    if(textTxIndex>=textTxPacket.frames.length){
-      textTxRunning=false;textTxEvent('complete',{total:textTxPacket.frames.length});
-    }else setTimeout(()=>sendTextFrame().catch(e=>{textTxRunning=false;textTxEvent('error',{error:e.message});}),500);
-  },{once:true});
+  const completed=await $('tx').onclick();
+  if(!textTxRunning||textTxAborted)return;
+  if(!completed){
+    textTxRunning=false;
+    textTxEvent('error',{error:'Frame nicht vollständig gesendet; Queue sicher gestoppt.'});
+    return;
+  }
+  textTxIndex++;
+  if(textTxIndex>=textTxPacket.frames.length){
+    textTxRunning=false;textTxEvent('complete',{total:textTxPacket.frames.length});
+  }else{
+    setTimeout(()=>sendTextFrame().catch(e=>{
+      textTxRunning=false;textTxEvent('error',{error:e.message});
+    }),80);
+  }
 }
 window.addEventListener('js8:send-queue',()=>{
   if(!textTxPacket||textTxRunning)return;
