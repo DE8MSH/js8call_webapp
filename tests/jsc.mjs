@@ -28,4 +28,10 @@ assert.equal(a.add({...base,frame:'x1',text:'HELLO ',time:'2026-11-04T10:00:00Z'
 assert.equal(a.add({...base,frame:'x2',text:'WORLD',time:'2026-11-04T10:00:15Z',type:2}).display,'HELLO WORLD');n++;
 assert.equal(a.add({...base,frame:'x3',text:'ORPHAN',time:'2026-11-04T10:01:00Z',type:2}).display,'ORPHAN');n++;
 assert.equal(denseWordIndices('00100').complete,true);n++;
+const clearable=new MessageAssembler();
+clearable.add({mode:'normal',frequency:1500,time:'2026-11-04T12:00:00Z',period:15,frame:'part1',text:'HELLO ',type:1});
+clearable.reset();
+assert.equal(clearable.pending.length,0);
+assert.equal(clearable.seen.size,0);
+console.log('JSC reset clears partial message state');
 console.log('JSC / Nachrichtenketten erfolgreich: '+n+' Tests');
