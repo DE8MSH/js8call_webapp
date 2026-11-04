@@ -84,15 +84,26 @@ function acceptRxBuffer(a){
  const keepFrom=captureFrames-Math.ceil((m.period+5)*sr);
  pcmBlocks=pcmBlocks.filter(x=>x.i+x.data.length>keepFrom);
 }
+async function refreshAudioInputs(){
+ if(!navigator.mediaDevices?.enumerateDevices){status('Audioeingang-Auswahl erfordert HTTPS');return;}
+ const select=$('rxDevice'),previous=select.value;
+ const devices=(await navigator.mediaDevices.enumerateDevices()).filter(x=>x.kind==='audioinput');
+ select.replaceChildren(new Option('Standard-Audioeingang',''));
+ devices.forEach((d,i)=>select.add(new Option(d.label||('Audioeingang '+(i+1)),d.deviceId)));
+ if([...select.options].some(o=>o.value===previous))select.value=previous;
+}
+$('refreshAudio').onclick=()=>refreshAudioInputs().catch(e=>status('Audioeingänge: '+e.message));
+navigator.mediaDevices?.addEventListener?.('devicechange',()=>refreshAudioInputs().catch(()=>{}));
+refreshAudioInputs().catch(()=>{});
 $('start').onclick=async()=>{
  try{
   if(rxOn)return;if(!worker)throw Error('WASM nicht geladen');
-  stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  const constraints={channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false};if($('rxDevice').value)constraints.deviceId={exact:$('rxDevice').value};stream=await navigator.mediaDevices.getUserMedia({audio:constraints});await refreshAudioInputs();
   await getAudio();source=ctx.createMediaStreamSource(stream);analyser=ctx.createAnalyser();analyser.fftSize=8192;analyser.smoothingTimeConstant=.38;
   processor=ctx.createScriptProcessor(4096,1,1);zero=ctx.createGain();zero.gain.value=0;
   source.connect(analyser);source.connect(processor);processor.connect(zero);zero.connect(ctx.destination);
   captureStartMs=0;captureFrames=0;pcmBlocks=[];activeMode=$('mode').value;rxOn=true;
-  $('mode').disabled=true;$('offset').disabled=true;
+  $('mode').disabled=true;$('offset').disabled=true;$('rxDevice').disabled=true;
   processor.onaudioprocess=e=>{if(!rxOn)return;const a=e.inputBuffer.getChannelData(0);let sum=0;for(let i=0;i<a.length;i++)sum+=a[i]*a[i];$('rxLevel').textContent='RX · '+(20*Math.log10(Math.sqrt(sum/a.length)+1e-8)).toFixed(1)+' dBFS';acceptRxBuffer(a);};
   renderTimer=setInterval(spectrogram,95);$('start').disabled=true;$('stop').disabled=false;
   status('RX aktiv · '+ctx.sampleRate+' Hz · automatische Suche '+($('scanAuto').checked?'300–3000 Hz':'±30 Hz um Audiofrequenz')+' · '+activeMode.toUpperCase());
@@ -100,7 +111,7 @@ $('start').onclick=async()=>{
 };
 $('stop').onclick=()=>{
  rxOn=false;if(processor)processor.onaudioprocess=null;processor?.disconnect();source?.disconnect();zero?.disconnect();stream?.getTracks().forEach(t=>t.stop());
- clearInterval(renderTimer);analyser=null;pcmBlocks=[];captureStartMs=0;$('mode').disabled=false;$('offset').disabled=false;
+ clearInterval(renderTimer);analyser=null;pcmBlocks=[];captureStartMs=0;$('mode').disabled=false;$('offset').disabled=false;$('rxDevice').disabled=false;
  $('start').disabled=false;$('stop').disabled=true;status('RX gestoppt');
 };
 $('spectrum').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect(),x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));$('audioFreq').value=Math.round(300+2700*x);status('Manuelle Audiofrequenz: '+freq()+' Hz');});
