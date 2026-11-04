@@ -34,7 +34,7 @@ export class SlotTransmitter {
   async transmit({periodMs,utcCorrectionMs=0,leadMs=350,audio,createSource,onSource=()=>{}}){
     if(this.active)throw Error('TX bereits aktiv');
     if(typeof audio!=='function'||typeof createSource!=='function')throw Error('TX-Audioquelle fehlt');
-    const token={cancelled:false,timer:null,rejectDelay:null,source:null};
+    const token={cancelled:false,timer:null,rejectDelay:null,source:null,audioStarted:false};
     this.active=token;
     try{
       const context=await audio();
@@ -61,6 +61,7 @@ export class SlotTransmitter {
       });
       onSource(source);
       source.start(at);
+      token.audioStarted=true;
       source.stop(at+periodMs/1000);
       this.status({state:'onair',utcMs:plan.utcMs});
       await finished;
@@ -68,6 +69,7 @@ export class SlotTransmitter {
       this.status({state:'audio-finished',utcMs:plan.utcMs});
       return {ok:true,utcMs:plan.utcMs};
     }catch(error){
+      if(token.audioStarted)try{token.source?.stop();}catch{}
       this.status({state:error.name==='AbortError'?'cancelled':'error',error:error.message});
       throw error;
     }finally{
