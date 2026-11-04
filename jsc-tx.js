@@ -76,3 +76,5 @@ export function encodeJscFrames(input,submode='normal',dictionary){
 export async function prepareJscText(input,submode='normal'){
   return encodeJscFrames(input,submode,await loadDictionary());
 }
+
+export async function getJscDictionary(){return loadDictionary();}
