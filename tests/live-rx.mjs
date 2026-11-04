@@ -76,4 +76,23 @@ deferred.at(-1).resolve({ok:true});await flush();
 assert.equal(results.length,before,'late response after RX stop is ignored');
 assert.equal(q.busy,0);
 
+{
+ const started=[],tasks=[],output=[];
+ const perMode=new BoundedLiveDecoder({
+  now:()=>500000,concurrency:2,maxQueued:3,maxAgeMs:30000,
+  decode:(job,lane)=>new Promise(resolve=>{started.push([job.mode,job.slot,lane]);tasks.push(resolve);}),
+  onResult:(result,job)=>output.push(job.slot)
+ });
+ perMode.submit({mode:'normal',slot:1,endMs:499000});
+ perMode.submit({mode:'normal',slot:2,endMs:499000});
+ await flush();
+ assert.equal(started.length,1,'two NORMAL slots must not be decoded concurrently');
+ perMode.submit({mode:'fast',slot:1,endMs:499000});
+ await flush();
+ assert.equal(started.length,2,'different submodes may decode concurrently');
+ tasks[0]('ok');await flush();
+ assert.equal(started.length,3,'next NORMAL slot begins only after older NORMAL completes');
+ tasks[1]('ok');tasks[2]('ok');await flush();
+ assert.deepEqual(output.sort(),[1,1,2].sort());
+}
 console.log('LIVE AUTO4 UTC slot planning and bounded dual-worker queue tests PASS');
