@@ -85,7 +85,11 @@ export class MessageSessionTracker{
     if(this.seen.has(id))return null;
     this.seen.add(id);if(this.seen.size>500)this.seen.delete(this.seen.values().next().value);
     const matching=this.headers.filter(h=>h.mode===event.mode&&Math.abs(h.frequency-frequency)<9&&time>=h.time&&time-h.time<=MAX_AGE_MS).sort((a,b)=>b.time-a.time)[0];
-    if(!matching)return {kind:'plain',from:'',to:'',text:body,checksum:'none',time:event.time,frequency,mode:event.mode};
+    if(!matching){
+      const heading=body.match(/^([A-Z0-9/]*[0-9][A-Z0-9/]*):\s+/);
+      return {kind:'plain',from:heading?.[1]||'',to:'',text:body,
+        checksum:'none',time:event.time,frequency,mode:event.mode};
+    }
     this.headers=this.headers.filter(h=>h!==matching);
     const m=body.match(/^(.*) ([0-9A-Z+\-./?]{3})$/s);
     const verified=!!m&&verifyChecksum16(m[1],m[2]);
