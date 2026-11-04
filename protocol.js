@@ -17,7 +17,7 @@ const CMD_LABELS=Object.freeze({0:'SNR?',1:'DIT DIT',2:'NACK',3:'HEARING?',4:'GR
 export const CQ_TYPES=['CQ CQ CQ','CQ DX','CQ QRP','CQ CONTEST','CQ FIELD','CQ FD','CQ CQ','CQ'];
 const BASECALLS=['<....>','@ALLCALL','@JS8NET','@DX/NA','@DX/SA','@DX/EU','@DX/AS','@DX/AF','@DX/OC','@DX/AN','@REGION/1','@REGION/2','@REGION/3',...Array.from({length:10},(_,i)=>'@GROUP/'+i),'@COMMAND','@CONTROL','@NET','@NTS',...Array.from({length:5},(_,i)=>'@RESERVE/'+i),'@APRSIS','@RAGCHEW','@JS8','@EMCOMM','@ARES','@MARS','@AMRRON','@RACES','@RAYNET','@RADAR','@SKYWARN','@CQ','@HB','@QSO','@QSOPARTY','@CONTEST','@FIELDDAY','@SOTA','@IOTA','@POTA','@QRP','@QRO'];
 const NBASECALL=37*36*10*27*27*27;
-function numericFrame(value){let s='';for(let i=11;i>=0;i--)s=FRAME_ALPHABET[Number((value>>BigInt(i*6))&63n)]+s;return s;}
+function numericFrame(value){let s='';for(let i=11;i>=0;i--)s+=FRAME_ALPHABET[Number((value>>BigInt(i*6))&63n)];return s;}
 function readFrame(frame){if(typeof frame!=='string'||frame.length!==12||[...frame].some(c=>!FRAME_ALPHABET.includes(c)))throw Error('Ungültiger JS8-Frame');let result=0n;for(const c of frame)result=(result<<6n)|BigInt(FRAME_ALPHABET.indexOf(c));return result;}
 export function packAlphaNumeric50(value){
   let s=String(value).toUpperCase().replace(/[^A-Z0-9 /@]/g,'');
