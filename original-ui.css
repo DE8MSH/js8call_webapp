@@ -65,3 +65,14 @@
  .js8-qt-parity .qt-macro-toolbar,.js8-qt-parity .qt-control-toolbar{gap:4px;padding:5px}
  .js8-qt-parity .qt-bar-label{min-width:100%;border:0;border-bottom:1px solid #9aabbc}
 }
+
+/* JS8_UI/mainwindow.ui textVerticalSplitter (receive vs composer). */
+.js8-qt-parity .center-pane.qt-vertical-split{display:grid;grid-template-rows:minmax(160px,43fr) 7px minmax(250px,57fr);gap:0;min-height:0}
+.js8-qt-parity .center-pane.qt-vertical-split>.message-pane,
+.js8-qt-parity .center-pane.qt-vertical-split>.composer-pane{min-height:0;min-width:0}
+.js8-qt-parity .qt-v-grip{cursor:row-resize;background:#637589;border-top:2px solid #263a4e;border-bottom:2px solid #26384a;touch-action:none;outline-offset:-2px}
+.js8-qt-parity .qt-v-grip:hover,.js8-qt-parity .qt-v-grip:focus-visible{background:#7fb2d7;outline:2px solid #64d2f8}
+@media(max-width:950px){
+ .js8-qt-parity .center-pane.qt-vertical-split{grid-template-rows:minmax(200px,auto) minmax(300px,auto)!important;gap:7px}
+ .js8-qt-parity .qt-v-grip{display:none}
+}
