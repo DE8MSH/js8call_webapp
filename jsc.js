@@ -73,6 +73,7 @@ export async function decodeJscFrame(frame,transportType,resolveWord=lookup){
    Never concatenate across non-adjacent slots or frequencies. */
 export class MessageAssembler{
   constructor(){this.pending=[];this.seen=new Set();}
+  reset(){this.pending=[];this.seen.clear();}
   add(event){
     const {frame,text,mode,frequency,type,time,period=15}=event;
     const payload=String(text??'');if(!payload)return null;
