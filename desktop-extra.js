@@ -17,6 +17,7 @@ if(root){
   const form=document.createElement('div');form.className='text-composer';
   form.innerHTML='<div class="heading"><h2>Nachricht senden · JSC</h2><span>JS8Call-Datenframes</span></div>'+
     '<div class="compose-target"><label>Empfänger / Ziel<input id="textRecipient" value="@ALLCALL" maxlength="18" spellcheck="false"></label><button id="copySelection" type="button">Aus Call Activity übernehmen</button></div>'+
+    '<label>Nachrichtenmodus<select id="textKind"><option value="plain">Freitext · JSC</option><option value="directed">Gerichtete MSG · JS8Call + CRC16</option></select></label>'+
     '<label>Freitext (max. 1500 Zeichen)<textarea id="textMessage" rows="4" maxlength="1500" spellcheck="false" placeholder="Deine Nachricht ..."></textarea></label>'+
     '<div class="tx-macros"><button type="button" data-macro="CQ CQ CQ DE {CALL} {GRID}">CQ</button><button type="button" data-macro="{TO} DE {CALL} SNR?">SNR?</button><button type="button" data-macro="{TO} DE {CALL} R R 73">73</button><button type="button" data-macro="{TO} DE {CALL} TNX FER QSO">TNX</button></div>'+
     '<div class="row actions"><button id="encodeText" class="primary" type="button">JSC-Frames vorbereiten</button><button id="sendText" type="button" disabled>▶ Alle Frames senden</button><button id="clearTextQueue" type="button">Queue löschen</button></div>'+
@@ -58,7 +59,7 @@ if(root){
   $('clearTextQueue').onclick=()=>{current=null;$('sendText').disabled=true;$('textQueue').replaceChildren();$('textQueueStatus').textContent='Queue gelöscht.';window.dispatchEvent(new Event('js8:clear-txqueue'));};
   $('txconfirm').addEventListener('change',()=>{if(current)$('sendText').disabled=!$('txconfirm').checked;});
   window.addEventListener('js8:txqueue',({detail:d})=>{
-   if(d.state==='ready'){current=d.packet;$('sendText').disabled=!$('txconfirm').checked;updateQueue();$('textQueueStatus').textContent=d.packet.frames.length+' JSC-Frames · '+d.packet.characters+' Zeichen · '+d.packet.mode.toUpperCase();}
+   if(d.state==='ready'){current=d.packet;$('sendText').disabled=!$('txconfirm').checked;updateQueue();$('textQueueStatus').textContent=d.packet.frames.length+' JS8-Frames · '+d.packet.characters+' Zeichen · '+d.packet.mode.toUpperCase()+(d.packet.kind==='directed'?' · MSG CRC16 '+d.packet.checksum:' · JSC-Freitext');}
    else if(d.state==='error'){$('textQueueStatus').textContent='Fehler: '+d.error;$('sendText').disabled=true;}
    else if(d.state==='sending'){$('textQueueStatus').textContent='Audio TX: Frame '+(d.index+1)+' / '+d.total+' UTC-slotweise geplant';$('sendText').disabled=true;}
    else if(d.state==='complete'){
@@ -66,7 +67,7 @@ if(root){
     records.outbox.unshift({time:new Date().toISOString(),to:recipient(),text:current?.text||'',status:'Audio ausgegeben',frames:d.total});records.outbox.length=Math.min(records.outbox.length,250);store();renderWindow('outbox');
    }else if(d.state==='cancelled'){$('textQueueStatus').textContent='TX-Queue abgebrochen.';$('sendText').disabled=!current||!$('txconfirm').checked;}
   });
-  ['mode','audioFreq','call'].forEach(id=>$(id)?.addEventListener('change',()=>{
+  ['mode','audioFreq','call','textRecipient','textKind'].forEach(id=>$(id)?.addEventListener('change',()=>{
    if(current){current=null;$('sendText').disabled=true;$('textQueue').replaceChildren();$('textQueueStatus').textContent='Einstellungen geändert: erneut vorbereiten.';}
   }));
  }
@@ -87,7 +88,7 @@ if(root){
   if(!records[type].length){const p=document.createElement('p');p.className='empty';p.textContent='Noch keine Einträge.';body.append(p);}
   for(const record of records[type].slice(0,250)){
    const row=document.createElement('div');row.className='msg-table-row';
-   for(const value of [String(record.time||'').slice(0,19).replace('T',' '),record.from||record.to||record.call||'',record.text||record.note||'']){
+   for(const value of [String(record.time||'').slice(0,19).replace('T',' '),record.from||record.to||record.call||'',(record.checksum==='invalid'?'[CRC FEHLER] ':'')+(record.text||record.note||'')]){
     const span=document.createElement('span');span.textContent=String(value);row.append(span);
    }
    body.append(row);
@@ -155,9 +156,21 @@ if(root){
  }
  root.parentElement.insertBefore(bar,root);
  const seen=new Set();
+ window.addEventListener('js8:conversation',e=>{
+  const d=e.detail||{};
+  if(!d.text)return;
+  records.inbox.unshift({
+    time:d.time,from:d.from||'RX',to:d.to||'',text:d.text,
+    checksum:d.checksum||'none',frequency:d.frequency,mode:d.mode,kind:d.kind
+  });
+  records.inbox.length=Math.min(250,records.inbox.length);
+  store();renderWindow('inbox');
+ });
  window.addEventListener('js8:frame',e=>{
   const d=e.detail,p=d.parsed||{};
-  if(['data','unknown','text_fragment'].includes(p.kind))return;
+  // Decoded text appears in the conversation event after the message is
+  // assembled. Never log an incomplete MSG header as a delivered message.
+  if(['data','unknown','text_fragment','text'].includes(p.kind)||(p.kind==='directed'&&p.command==='MSG'))return;
   const id=[d.time,d.text].join('|');if(seen.has(id))return;seen.add(id);if(seen.size>1000)seen.delete(seen.values().next().value);
   records.inbox.unshift({time:d.time,from:p.call||'RX',text:d.display||p.display||'',raw:d.text,frequency:d.frequency});records.inbox.length=Math.min(250,records.inbox.length);store();renderWindow('inbox');
  });
