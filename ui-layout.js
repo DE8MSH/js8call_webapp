@@ -29,7 +29,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     details.addEventListener('toggle',()=>{if(details.open)[...menubar.querySelectorAll('details')].filter(e=>e!==details).forEach(e=>e.open=false);});
     menubar.append(details);
   }
-  const version=el('span','app-version','JS8Web LAB 0.7 · RX/TX'),menutop=el('span','app-menu-separator');
+  const version=el('span','app-version','JS8Web LAB 0.8 · RX/TX'),menutop=el('span','app-menu-separator');
   menubar.append(menutop,version);
   document.body.insertBefore(menubar,header);
   const toolbar=el('section','rig-toolbar');
@@ -210,7 +210,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
   $('stationFilter').addEventListener('input',paintCalls);
   $('onlyCQ').addEventListener('change',paintCalls);
   setInterval(paintCalls,15000);
-  const prefIds=['call','locator','band','mode','audioFreq','offset','scanAuto'];
+  const prefIds=['call','locator','band','mode','audioFreq','offset','scanAuto','enhancedRx'];
   function saveSettings(){
     const prefs={};for(const id of prefIds){const v=$(id);if(v)prefs[id]=v.type==='checkbox'?v.checked:v.value;}
     prefs.showBand=!bandPane.classList.contains('pane-hidden');
