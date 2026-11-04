@@ -22,7 +22,7 @@ if(root){
     '<div class="tx-macros"><button type="button" data-macro="CQ CQ CQ DE {CALL} {GRID}">CQ</button><button type="button" data-macro="{TO} DE {CALL} SNR?">SNR?</button><button type="button" data-macro="{TO} DE {CALL} R R 73">73</button><button type="button" data-macro="{TO} DE {CALL} TNX FER QSO">TNX</button></div>'+
     '<div class="row actions"><button id="encodeText" class="primary" type="button">JSC-Frames vorbereiten</button><button id="sendText" type="button" disabled>▶ Alle Frames senden</button><button id="clearTextQueue" type="button">Queue löschen</button></div>'+
     '<div id="textQueueStatus" class="queue-status" role="status">Noch keine Freitextframes vorbereitet.</div><div id="textQueue" class="text-queue" role="list"></div>'+
-    '<p class="composer-warning">Vor jeder Aussendung TX freigeben. Audio wird nach UTC-Slots gesendet. Ohne korrekt angeschlossene Funkhardware/PTT erfolgt nur Audiowiedergabe. Kein vollständiges JS8Call-Directed-Routing.</p>';
+    '<p class="composer-warning">Vor jeder Aussendung TX freigeben. Ein verpasster UTC-Slot führt zum sicheren Abbruch. Bei Browser-Wechsel in den Hintergrund wird TX abgebrochen. PTT ist nur über den gewählten RTS/DTR-Ausgang steuerbar; Funkgerät überwachen.</p>';
   composer.append(form);
   const ack=$('txconfirm')?.closest('label');if(ack){form.insertBefore(ack,$('textQueueStatus'));ack.classList.add('tx-confirm');}
   const cancel=$('cancel');if(cancel)form.querySelector('.actions').append(cancel);
@@ -58,6 +58,14 @@ if(root){
   };
   $('clearTextQueue').onclick=()=>{current=null;$('sendText').disabled=true;$('textQueue').replaceChildren();$('textQueueStatus').textContent='Queue gelöscht.';window.dispatchEvent(new Event('js8:clear-txqueue'));};
   $('txconfirm').addEventListener('change',()=>{if(current)$('sendText').disabled=!$('txconfirm').checked;});
+  window.addEventListener('js8:txstate',({detail:d})=>{
+    const output=$('textQueueStatus');
+    if(!output||!current||!d)return;
+    if(d.state==='armed')output.textContent='TX wartet auf UTC-Slot '+new Date(d.utcMs).toISOString().slice(11,19)+' · PTT noch aus';
+    else if(d.state==='ptt')output.textContent='PTT bestätigt · warte auf zeitgenauen Audio-Beginn';
+    else if(d.state==='onair')output.textContent='TX-Audio läuft · PTT aktiv';
+    else if(d.state==='ptt-release-error')output.textContent='WARNUNG: PTT konnte nicht ausgeschaltet werden · Funkgerät sofort prüfen!';
+  });
   window.addEventListener('js8:txqueue',({detail:d})=>{
    if(d.state==='ready'){current=d.packet;$('sendText').disabled=!$('txconfirm').checked;updateQueue();$('textQueueStatus').textContent=d.packet.frames.length+' JS8-Frames · '+d.packet.characters+' Zeichen · '+d.packet.mode.toUpperCase()+(d.packet.kind==='directed'?' · MSG CRC16 '+d.packet.checksum:' · JSC-Freitext');}
    else if(d.state==='error'){$('textQueueStatus').textContent='Fehler: '+d.error;$('sendText').disabled=true;}
