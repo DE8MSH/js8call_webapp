@@ -95,4 +95,25 @@ assert.equal(q.busy,0);
  tasks[1]('ok');tasks[2]('ok');await flush();
  assert.deepEqual(output.sort(),[1,1,2].sort());
 }
+{
+ const seen=[],done=[];
+ const decoder=new BoundedLiveDecoder({
+  concurrency:2,maxQueued:3,now:()=>600000,maxAgeMs:30000,
+  laneForMode:mode=>mode==='normal'||mode==='slow'?0:1,
+  decode:(job,lane)=>new Promise(resolve=>{seen.push([job.mode,lane]);done.push(resolve);})
+ });
+ decoder.submit({mode:'normal',slot:1,endMs:599000});
+ decoder.submit({mode:'fast',slot:1,endMs:599000});
+ decoder.submit({mode:'slow',slot:1,endMs:599000});
+ decoder.submit({mode:'turbo',slot:1,endMs:599000});
+ await flush();
+ assert.deepEqual(seen,[['normal',0],['fast',1]],
+   'worker affinity separates NORMAL/SLOW from FAST/TURBO');
+ done[0]('ok');await flush();
+ assert.deepEqual(seen[2],['slow',0]);
+ done[1]('ok');await flush();
+ assert.deepEqual(seen[3],['turbo',1]);
+ done[2]('ok');done[3]('ok');await flush();
+ assert.equal(decoder.busy,0);
+}
 console.log('LIVE AUTO4 UTC slot planning and bounded dual-worker queue tests PASS');
