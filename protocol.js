@@ -114,8 +114,11 @@ export function makeDirected(from,to,command){
   const first64=(3n<<61n)|(BigInt(fromPack.value)<<33n)|(BigInt(toPack.value)<<5n)|BigInt(cmd);
   return {frame:numericFrame((first64<<8n)|BigInt(rem)),type:3,display:String(from).toUpperCase()+': '+String(to).toUpperCase()+' '+command};
 }
-export function parseFrame(frame){
+export function parseFrame(frame,transportType=0){
   const v=readFrame(frame),flag=Number((v>>69n)&7n);
+  // Fast/Turbo/SLOW transport frames with JS8CallData (bit 2) use
+  // all 72 payload bits; first data bits are NOT a message type.
+  if(transportType&4)return{kind:'data',command:'JSC',display:'Komprimierter JSC-Datenframe (Wörterbuch wird geladen)'};
   if(flag===0||flag===1||flag===2){
     const call=unpackAlphaNumeric50((v>>19n)&MASK50);
     const num=(Number((v>>8n)&2047n)<<5)|Number((v>>3n)&31n);
