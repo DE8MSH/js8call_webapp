@@ -1,6 +1,8 @@
-/* JS8Web LAB v0.3 browser receiver - GPL-3.0. Multi-frequency Costas/LDPC search.
+import {SoftFrameCombiner,subtractDecodedToneSequence} from './rx-enhance.js';
+/* JS8Web LAB v0.8 browser receiver - GPL-3.0. Multi-frequency Costas/LDPC search.
    Weak-signal performance is experimental, not equivalent to the original WSJT-X decoder. */
 let core;
+const combiner=new SoftFrameCombiner({ttlMs:120000,capacity:48,maxRepeats:4});
 const MODES={normal:{sps:1920,delay:.5,period:15,cos:0},fast:{sps:1200,delay:.2,period:10,cos:1},turbo:{sps:600,delay:.1,period:6,cos:1},slow:{sps:3840,delay:.5,period:30,cos:1}};
 const COSTAS=[[[4,2,5,6,1,3,0],[4,2,5,6,1,3,0],[4,2,5,6,1,3,0]],[[0,6,2,3,5,4,1],[1,5,0,2,3,6,4],[2,5,0,6,4,1,3]]];
 async function engine(){if(!core){let r=await fetch(new URL('./js8-core.wasm',import.meta.url));if(!r.ok)throw Error('WASM HTTP '+r.status);core=(await WebAssembly.instantiate(await r.arrayBuffer())).instance.exports;}return core;}
@@ -45,10 +47,110 @@ function search(a,m,low,high){let nfft=1;while(nfft<m.sps)nfft*=2;const hzbin=12
   top.sort((a,b)=>b.q-a.q);return {candidates:top.slice(0,20),best:highest,peakFreq};
 }
 function refine(a,c,m){let best={q:-1,start:c.start,freq:c.freq},timeStep=Math.max(1,Math.round(.025*12000));for(let dt=-4;dt<=4;dt++){let start=c.start+dt*timeStep;if(start<0||start+79*m.sps>a.length)continue;for(let df=-4;df<=4;df+=2){const freq=c.freq+df,q=fineScore(a,start,freq,m);if(q>best.q)best={q,start,freq};}}return best;}
-function demod(a,sync,m){let scores=new Float32Array(174),step=12000/m.sps;for(let i=0;i<58;i++){let sym=i<29?7+i:43+(i-29),p=sync.start+sym*m.sps,pow=[];for(let t=0;t<8;t++)pow.push(energy(a,p,m.sps,sync.freq+t*step));const avg=pow.reduce((x,y)=>x+y,0)/8+1e-12;for(let k=0;k<3;k++){let hi=0,lo=0;for(let t=0;t<8;t++)if(t&(1<<(2-k)))hi=Math.max(hi,pow[t]);else lo=Math.max(lo,pow[t]);scores[(i<29?i*3:87+(i-29)*3)+k]=Math.max(-8,Math.min(8,1.5*(hi-lo)/avg));}}return scores;}
+function demod(a,sync,m,soft=false){
+ const scores=new Float32Array(174),step=12000/m.sps;
+ for(let i=0;i<58;i++){
+  let sym=i<29?7+i:43+(i-29),p=sync.start+sym*m.sps,pow=[];
+  for(let t=0;t<8;t++)pow.push(energy(a,p,m.sps,sync.freq+t*step));
+  const avg=pow.reduce((x,y)=>x+y,0)/8+1e-12;
+  for(let k=0;k<3;k++){
+   let hi=0,lo=0;
+   if(soft){
+    // Noise-normalized log-sum-exp (soft decision) alternative to max-log.
+    const scale=Math.max(1e-12,avg*.55);
+    const floor=Math.max(...pow);
+    for(let t=0;t<8;t++){
+      const v=Math.exp(Math.max(-60,Math.min(0,(pow[t]-floor)/scale)));
+      if(t&(1<<(2-k)))hi+=v;else lo+=v;
+    }
+    scores[(i<29?i*3:87+(i-29)*3)+k]=Math.max(-8,Math.min(8,1.3*Math.log((hi+1e-12)/(lo+1e-12))));
+   }else{
+    for(let t=0;t<8;t++)if(t&(1<<(2-k)))hi=Math.max(hi,pow[t]);else lo=Math.max(lo,pow[t]);
+    scores[(i<29?i*3:87+(i-29)*3)+k]=Math.max(-8,Math.min(8,1.5*(hi-lo)/avg));
+   }
+  }
+ }
+ return scores;
+}
 function createAudio(tones,m,freq){let a=new Float32Array(m.period*12000),phase=0,start=(m.delay*12000)|0;for(let i=0;i<tones.length*m.sps;i++){let tone=tones[Math.floor(i/m.sps)],hz=freq+tone*12000/m.sps;phase+=2*Math.PI*hz/12000;if(phase>=2*Math.PI)phase-=2*Math.PI;let fade=Math.min(1,i/(m.sps*.12),(tones.length*m.sps-i)/(m.sps*.12));a[start+i]=.7*Math.sin(phase)*Math.max(0,fade);}return a;}
-async function decode(msg){let e=await engine(),m=MODES[msg.mode];if(!m)throw Error('Unbekannter Submode');let a=msg.synthetic?createAudio(msg.tones,m,msg.freq):resample(msg.samples,msg.sr);if(a.length<79*m.sps)throw Error('Nicht genügend Samples für 79 Symbole');
-  let auto=msg.auto!==false,focus=Number(msg.freq)||1500,lo=auto?300:Math.max(300,focus-30),hi=auto?3000:Math.min(3000,focus+30+7*12000/m.sps);let scan=search(a,m,lo,hi),found=[];
-  for(let c of scan.candidates){let s=refine(a,c,m);if(s.q<.4)continue;if(found.some(x=>Math.abs(x.frequency-s.freq)<12&&Math.abs(x.start-s.start)<m.sps))continue;new Float32Array(e.memory.buffer,e.js8_llr_ptr(),174).set(demod(a,s,m));let iters=e.js8_decode();if(iters<0)continue;let raw=new Uint8Array(e.memory.buffer,e.js8_decoded_ptr(),12);found.push({text:String.fromCharCode(...raw),type:e.js8_type(),iters,sync:s.q,frequency:s.freq,dt:s.start/12000-m.delay,start:s.start});if(found.length>=14)break;}
-  found.sort((a,b)=>b.sync-a.sync);if(found.length)return{ok:true,...found[0],results:found,checked:scan.candidates.length,scanPeak:scan.peakFreq};return{ok:false,reason:'Kein CRC/LDPC-gültiger JS8-Frame ('+scan.candidates.length+' Sync-Kandidaten)',q:scan.best,scanPeak:scan.peakFreq,checked:scan.candidates.length};}
+function decodeCandidate(e,a,s,m,msg){
+ const writable=new Float32Array(e.memory.buffer,e.js8_llr_ptr(),174);
+ const primary=demod(a,s,m);
+ writable.set(primary);
+ let iters=e.js8_decode(),strategy='max-log',combined=0;
+ if(iters<0&&msg.enhanced!==false){
+  writable.set(demod(a,s,m,true));
+  iters=e.js8_decode();strategy='log-sum-exp';
+ }
+ const hasTime=Number.isFinite(msg.startMs);
+ let phase=0,slot=0;
+ if(hasTime){
+  const candidateMs=msg.startMs+(s.start/12),periodMs=m.period*1000;
+  slot=Math.floor(candidateMs/periodMs);
+  phase=(candidateMs-slot*periodMs)/1000;
+ }
+ if(iters<0&&hasTime&&msg.enhanced!==false&&s.q>=.4){
+  const cached=combiner.observe({mode:msg.mode,frequency:s.freq,phase,slot,atMs:msg.startMs+s.start/12,llr:primary});
+  if(cached.combined){
+   writable.set(cached.llr);
+   iters=e.js8_decode();strategy='repeat-soft';combined=cached.repeats;
+  }
+ }
+ if(iters<0)return null;
+ const raw=new Uint8Array(e.memory.buffer,e.js8_decoded_ptr(),12);
+ const text=String.fromCharCode(...raw),type=e.js8_type();
+ if(hasTime)combiner.markDecoded({mode:msg.mode,frequency:s.freq,phase});
+ return{text,type,iters,sync:s.q,frequency:s.freq,dt:s.start/12000-m.delay,start:s.start,strategy,combined};
+}
+function cancelCandidate(e,residual,f,m){
+ const memory=new Uint8Array(e.memory.buffer),offset=e.js8_input_ptr();
+ for(let i=0;i<12;i++)memory[offset+i]=f.text.charCodeAt(i);
+ if(e.js8_encode(f.type,m.cos)!==0)return{applied:false,fit:0};
+ const tones=Array.from(new Int32Array(e.memory.buffer,e.js8_tones_ptr(),79));
+ return subtractDecodedToneSequence(residual,{start:f.start,frequency:f.frequency,sps:m.sps,tones});
+}
+async function decode(msg){
+ const e=await engine(),m=MODES[msg.mode];if(!m)throw Error('Unbekannter Submode');
+ const a=msg.synthetic?createAudio(msg.tones,m,msg.freq):resample(msg.samples,msg.sr);
+ if(a.length<79*m.sps)throw Error('Nicht genügend Samples für 79 Symbole');
+ const auto=msg.auto!==false,focus=Number(msg.freq)||1500,
+  lo=auto?300:Math.max(300,focus-30),
+  hi=auto?3000:Math.min(3000,focus+30+7*12000/m.sps);
+ const scan=search(a,m,lo,hi),found=[];
+ let checked=0;
+ function checkCandidates(signal,candidates,pass='main'){
+  for(const c of candidates){
+   const s=refine(signal,c,m);
+   if(s.q<.4)continue;
+   if(found.some(x=>Math.abs(x.frequency-s.freq)<12&&Math.abs(x.start-s.start)<m.sps))continue;
+   checked++;
+   const frame=decodeCandidate(e,signal,s,m,msg);
+   if(frame){found.push({...frame,pass});if(found.length>=14)break;}
+  }
+ }
+ checkCandidates(a,scan.candidates);
+ let cancellations=0;
+ // Bounded, localized successive interference cancellation. Only run when
+ // a strong waveform is CRC-validated and a second signal could be hidden.
+ if(msg.enhanced!==false&&msg.sic!==false&&found.length>0&&found.length<14){
+  const residual=a.slice();
+  for(const f of found.slice(0,2)){
+   const removed=cancelCandidate(e,residual,f,m);
+   if(removed.applied&&removed.fit>.15)cancellations++;
+  }
+  if(cancellations){
+   const freqs=found.map(f=>f.frequency),
+    bandLo=Math.max(lo,Math.min(...freqs)-135),
+    bandHi=Math.min(hi,Math.max(...freqs)+135+7*12000/m.sps);
+   if(bandHi-bandLo>25){
+    const second=search(residual,m,bandLo,bandHi);
+    checkCandidates(residual,second.candidates,'SIC');
+   }
+  }
+ }
+ found.sort((a,b)=>b.sync-a.sync);
+ if(found.length)return{ok:true,...found[0],results:found,checked,scanPeak:scan.peakFreq,cancellations};
+ return{ok:false,reason:'Kein CRC/LDPC-gültiger JS8-Frame ('+scan.candidates.length+' Sync-Kandidaten)',
+   q:scan.best,scanPeak:scan.peakFreq,checked};
+}
 self.onmessage=async ev=>{try{self.postMessage({id:ev.data.id,...await decode(ev.data)});}catch(ex){self.postMessage({id:ev.data.id,ok:false,reason:String(ex.message||ex)});}};
