@@ -95,6 +95,12 @@ export class MessageAssembler{
       if(last){this.pending=this.pending.filter(x=>x!==p);return{display:p.text,complete:true,frames:p.frames};}
       return{display:p.text,complete:false,frames:p.frames};
     }
-    return{display:payload,complete:last,orphan:!last,frames:1};
+    // JS8Call places FIRST on the directed MSG header, not on the following
+    // JSC data frame. Preserve an unmarked first data fragment until LAST.
+    if(!last){
+      this.pending.push({mode,frequency,time:stamp,text:payload,frames:1,orphan:true});
+      return{display:payload,complete:false,orphan:true,frames:1};
+    }
+    return{display:payload,complete:true,orphan:true,frames:1};
   }
 }
