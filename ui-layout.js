@@ -14,7 +14,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
   const menuDefinitions=[
     ['Datei',[['WAV-Datei öffnen','wav'],['RX-Log als CSV speichern','csv'],['Stationseinstellungen speichern','save'],['Band Activity leeren','clear']]],
     ['Konfiguration',[['Station und Funkgerät…','settings'],['Audioeingang auswählen…','settings'],['Serielle PTT…','ptt'],['Uhrzeitkorrektur…','settings']]],
-    ['Modus',[['NORMAL · 15 s','mode:normal'],['FAST · 10 s','mode:fast'],['TURBO · 6 s','mode:turbo'],['SLOW · 30 s','mode:slow'],['Auto-RX (breitbandig)','auto']]],
+    ['Modus',[['NORMAL · 15 s','mode:normal'],['FAST · 10 s','mode:fast'],['TURBO · 6 s','mode:turbo'],['SLOW · 30 s','mode:slow'],['Auto-RX (breitbandig)','auto'],['Live-RX alle vier Modi','auto4']]],
     ['Log',[['CSV exportieren','csv'],['Empfangsfenster leeren','clear'],['Nachrichtenfenster leeren','clear-messages']]],
     ['Ansicht',[['Band Activity ein-/ausblenden','toggle-band'],['Call Activity ein-/ausblenden','toggle-calls'],['Wasserfall ein-/ausblenden','toggle-waterfall'],['Status/Diagnose anzeigen','diagnosis'],['Fensteraufteilung zurücksetzen','reset']]],
     ['Steuerung',[['RX starten','rx'],['RX stoppen','stop'],['CQ vorbereiten','cq'],['Heartbeat vorbereiten','hb'],['Einzelrahmen testen','test'],['TX stoppen','halt']]],
@@ -29,7 +29,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     details.addEventListener('toggle',()=>{if(details.open)[...menubar.querySelectorAll('details')].filter(e=>e!==details).forEach(e=>e.open=false);});
     menubar.append(details);
   }
-  const version=el('span','app-version','JS8Web LAB 0.9 · RX/TX'),menutop=el('span','app-menu-separator');
+  const version=el('span','app-version','JS8Web LAB 1.0 · RX/TX'),menutop=el('span','app-menu-separator');
   menubar.append(menutop,version);
   document.body.insertBefore(menubar,header);
   const toolbar=el('section','rig-toolbar');
@@ -181,9 +181,10 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
     ptt:()=>{$('#settingsDrawer').open=true;$('#pttLine').scrollIntoView({behavior:'smooth',block:'center'});},
     diagnosis:()=>diagnosis.scrollIntoView({behavior:'smooth',block:'start'}),
     original:()=>window.open('https://github.com/js8call/js8call','_blank','noopener'),
-    help:()=>window.alert('JS8Web LAB 0.9 · Browser-Teilport. Empfang und CQ/HB-Kurzbefehle verfügbar; JSC-Freitext-Dekompression ist implementiert; Inbox und vollständige QSO-Steuerung fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
+    help:()=>window.alert('JS8Web LAB 1.0 · Browser-Teilport. RX in vier Submodi, JSC-Freitext sowie lokale Inbox/Outbox sind verfügbar; vollständige Original-Decoder- und automatische QSO-/Routing-Funktionen fehlen noch. Keine vollständige JS8Call-Desktop-Emulation.'),
     save:()=>{saveSettings();window.alert('Stations-/Anzeigeeinstellungen lokal im Browser gespeichert.');},
     auto:()=>{$('scanAuto').checked=!$('scanAuto').checked;saveSettings();},
+    auto4:()=>{if($('liveAllModes').disabled){window.alert('Live-Modi erst nach RX Stop umschalten.');return;}$('liveAllModes').checked=!$('liveAllModes').checked;saveSettings();},
     'toggle-band':()=>{bandPane.classList.toggle('pane-hidden');saveSettings();},
     'toggle-calls':()=>{calls.classList.toggle('pane-hidden');saveSettings();},
     'toggle-waterfall':()=>{spectrum.classList.toggle('pane-hidden');saveSettings();},
@@ -210,7 +211,7 @@ if(main&&station&&spectrum&&protocol&&bandPane&&txPane&&diagnosis){
   $('stationFilter').addEventListener('input',paintCalls);
   $('onlyCQ').addEventListener('change',paintCalls);
   setInterval(paintCalls,15000);
-  const prefIds=['call','locator','band','mode','audioFreq','offset','pttLead','scanAuto','enhancedRx'];
+  const prefIds=['call','locator','band','mode','audioFreq','offset','pttLead','scanAuto','enhancedRx','liveAllModes'];
   function saveSettings(){
     const prefs={};for(const id of prefIds){const v=$(id);if(v)prefs[id]=v.type==='checkbox'?v.checked:v.value;}
     prefs.showBand=!bandPane.classList.contains('pane-hidden');
