@@ -1,8 +1,18 @@
-# JS8Web LAB 0.9 – GitHub-Pages-Webapp
+# JS8Web LAB 1.0 – GitHub-Pages-Webapp
 
 **Experimenteller JS8-Transceiver auf Transportframe-Ebene mit WebAssembly.**
 
 Dieses Projekt ist **kein vollständiger JS8Call-Port** und darf nicht als solcher bezeichnet werden. Es ist eine unabhängig gestaltete Browser-UI mit einem portierten JS8-Frame-Codec aus dem GPLv3-Projekt `js8call/js8call`. Die Webapp benötigt weder einen Dienst noch einen Backendserver. Der beiliegende WebAssembly-Codec kann mit Emscripten neu gebaut werden.
+
+## Stand 1.0 – Live-AUTO4 mit vier UTC-Zeitschlitzen
+
+Im Wasserfall-Bereich kann **Live: alle 4 Modi · 2 Worker** aktiviert werden. Die App empfängt dann in **NORMAL (15 s), FAST (10 s), TURBO (6 s) und SLOW (30 s)** gleichzeitig, ohne dass die TX-Submode-Auswahl verändert wird. Der Live-Audiopuffer wird einmal aufgenommen und die Zeitplanung erstellt für jeden Modus unabhängig vollständige UTC-Fenster mit den erforderlichen Vor- und Nachlauf-Samples.
+
+Der neue Scheduler `live-rx.js` verwaltet eine **begrenzte Warteschlange mit maximal vier wartenden Dekodieraufträgen** und zwei parallelen WebWorkern. Bei Rückstau werden veraltete Aufträge verworfen, statt den Browser mit unbegrenzten Aufträgen und Audiokopien zu überlasten. Aufträge derselben Betriebsart laufen nie parallel, damit fragmentierte JSC-Nachrichten in korrekter zeitlicher Reihenfolge ankommen. Die Anzeige liefert **laufende Worker, wartende Aufträge, bearbeitete Fenster, erfolgreiche Decodes und verworfene Fenster**. Beim RX-Stopp werden Worker und unvollständige Warteschlangen beendet; verspätete Ergebnisse alter Sessions werden ignoriert.
+
+**CPU-Hinweis:** Die Live-Suche in vier Modi über 300–3000 Hz ist sehr rechenintensiv. Auf langsamen Geräten kann es sinnvoll sein, **Auto-RX 300–3000 Hz** auszuschalten und einen bekannten Audio-Offset im Wasserfall auszuwählen (schmalbandige Suche). Bei ausgelassenen Aufträgen zeigt die Webapp den Verlust offen an, statt angeblich vollständigen Empfang vorzutäuschen. Der 1-Modus-Empfang bleibt weiterhin verfügbar und ist die Standardkonfiguration. Das gilt für den Browser-Decoder und ist keine Portierung des originalen WSJT-X-Mehrmodus-Systems.
+
+**Offline:** Der neue Live-Scheduler wird durch den Service Worker mitgespeichert; Cache-Version `js8web-static-v10`. `tests/live-rx.mjs` prüft unabhängig voneinander laufende Zeitpläne, das Überspringen unvollständiger Slots, Drop-Strategie, Entkopplung der Worker, Fehlerbehandlung und Session-Reset. Diese Komponententests ersetzen keine Realzeit-/HF-Messungen.
 
 ## Stand 0.9 – Zuverlässige UTC-TX-Steuerung und optionaler Offline-Betrieb
 
